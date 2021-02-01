@@ -24,11 +24,15 @@ contents of the script:
     TODO - calc inertia tensor for orbital
 """
 
-from typing import Dict, List
+from typing import Dict, List, NamedTuple, Tuple
 import json
 
 from typing_extensions import TypedDict
 
+import numpy as np
+
+class AtomicCoords(TypedDict):
+    str: Tuple[float, float, float]
 
 class AtomicOrbital(TypedDict):
     atomic_orbital_number: int
@@ -44,10 +48,11 @@ class AtomicContributions(TypedDict):
 class MolecularOrbital(TypedDict):
     occupied: bool
     eigenvalue: float
+    ### atomic_contribution = {"{atom_number}" : AtomicContributions}
     atomic_contributions: Dict[str, AtomicContributions]
 
 
-def calc_atomic_weight(atomic_contribution) -> float:
+def calc_atomic_weight(atomic_contribution: AtomicContributions) -> float:
     """
     the weight on each atom is the sum of the square of the coefficient
     for all atomic orbital centred on that atom.
@@ -90,6 +95,54 @@ def calc_weight_on_heteroatoms(mo: MolecularOrbital, heteroatom_symbol: str):
         ) if i["atom_symbol"].strip().lower() == heteroatom_symbol.strip().lower()]
     )
 
+def calc_inertia_tensor(mo: MolecularOrbital, atom_coords: AtomicCoords):
+    r"""
+    See https://en.wikipedia.org/wiki/Moment_of_inertia#Inertia_tensor
+
+    For rigid object of N point masses m_k,
+    Components of moment of inertia tensor I_, are defined as:
+    I_ij =def \Sigma_k=1^N { m_k * (||r_k||^2 kroneker_ij - x_i^(k) * x_j^(k) ) }
+        where: 
+        {i,j} are 1,2,3 referring to x,y,z respectively.
+        r_k = [x_1^(k), x_2^(k), x_3^(k)] the vector to the point mass m_k
+        kroneker_ij is the Kronecker delta (IE 1 if i==j else 0)
+
+    Translating for use in Mol. orbitals:
+        mass m_k will refer to the orbital weight on atom k.
+
+
+    physical interpretation?
+    I_xx is the moment of inertia around the x axis for things that are being rotated around the x axis
+    and I_yx is the moment of inertia around the x axis for an object being rotated around the y axis.
+
+
+    """
+
+    def tensor_element(i, j):
+        total = 0
+        for atom_number, atomic_contribution in mo["atomic_contributions"].items():
+            m_k = calc_atomic_weight(atomic_contribution)
+            x, y, z = atom_coords[atom_number]
+            ijmap = {
+                1: x,
+                2: y,
+                3: z
+            }
+            if i==j:
+                rhs = x**2 + y**2 + z**2 - ijmap[i]**2
+            else:
+                rhs = - (ijmap[i] * ijmap[j])
+            result = m_k * rhs
+            total += result
+        return total
+
+    return np.asarray([
+        [tensor_element(1,1), tensor_element(1,2), tensor_element(1,3),]
+        , [tensor_element(2,1), tensor_element(2,2), tensor_element(2,3),]
+        , [tensor_element(3,1), tensor_element(3,2), tensor_element(3,3)]
+    ])
+
+
 def runtests():
     atomic_orbitals: List[AtomicOrbital] = [
         {
@@ -128,8 +181,12 @@ if __name__ == "__main__":
     with open(orbital_file, 'r') as JsonFile:
         content = json.load(JsonFile)
     homo: MolecularOrbital = content["54"]
+    atom_coords: AtomicCoords = content["atomic_coords"]
 
     print(f"""
+
+    input file {sys.argv[1]}
+
     inverse participation ratio = {calc_IPR(homo)}
     (minimum is 1, maximum is number of atoms)
     ----------------------------------------------
@@ -137,4 +194,10 @@ if __name__ == "__main__":
     weight on Oxygen (O) = {calc_weight_on_heteroatoms(homo, "O")}
     weight on Oxygen (C) = {calc_weight_on_heteroatoms(homo, "C")}
     weight on Oxygen (H) = {calc_weight_on_heteroatoms(homo, "H")}
+
+    ----------------------------------------------
+
+    Inertia tensor is:
+    {calc_inertia_tensor(homo, atom_coords)}
+
     """)
