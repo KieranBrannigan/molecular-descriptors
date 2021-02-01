@@ -1,10 +1,8 @@
 """
 
-Given an input gaussian log file, parse out the orbitals.
+Given an input gaussian log file, parse out the atomic coordinates and molecular orbitals.
 
 Output:
-    Number of occ. orbitals
-    Number of Virt. orbitals
     
     orbital table/matrix:
         Example:
@@ -18,11 +16,6 @@ Output:
                 4        1PZ         0.14746  -0.02153   0.00477   0.08341   0.02417
                 5 2   N  1S          0.78611  -0.03071   0.00727   0.01200   0.03001     
 
-    FOR NOW, print the orbital table
-    TODO:
-        parse the orbitals out of the orbital table
-
-    output will be list of MOs
     
     molname_Molecular_orbitals.json: [
         {
@@ -55,10 +48,28 @@ import os
 from typing import Iterable, List
 import re
 import json
+import argparse
 
 import numpy as np
 
-inFile: str = sys.argv[1]
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "-i", "--input-file", dest="inputFile", help="input gaussian log file to parse orbitals from", type=str
+)
+parser.add_argument(
+    "--orbitals", type=str, dest="orbitals", help='string of comma separated values of the orbitals to extract. Values can be an integer or the string "homo" or "lumo". Leave blank to extract all orbitals or don\'t pass this parameter.'
+)
+
+args = parser.parse_args()
+
+inFile: str = args.inputFile
+
+orbitals = args.orbitals
+if orbitals:
+    orbitals = orbitals.split(",")
+else:
+    orbitals = [""]
+
 
 molName, _ = os.path.splitext(inFile)
 
@@ -73,6 +84,9 @@ with open(inFile, "r") as ReadFile:
 ### Get list of orbital symmetries 
 ##################################
 
+### Natoms line regex
+start_coords_pattern = re.compile(r"Charge =\s+\d Multiplicity")
+
 occupied_symm_lines: List[str] = []
 virtual_symm_lines: List[str] = []
 
@@ -81,6 +95,10 @@ occ = None
 virt = None
 MO_table_start_idx = None
 MO_table_end_idx = None
+start_coords = False
+atom_num = 1
+### {"{atom_num}" : [x,y,z]}
+atomic_coords = {}
 for idx, line in enumerate(fileContent):
     if "Orbital symmetries:" in line:
         start_idx = idx
@@ -99,6 +117,17 @@ for idx, line in enumerate(fileContent):
             occupied_symm_lines.append(line.strip())
         elif virt:
             virtual_symm_lines.append(line.strip())
+
+    elif start_coords:
+        if line.strip() == "":
+            start_coords = False
+        else:
+            atomic_coords[atom_num] = [float(x) for x in line.split()[1:]]
+            atom_num += 1
+
+    elif re.search(start_coords_pattern, line):
+        start_coords = True
+
     elif "molecular orbital coefficients:" in line.lower():
         MO_table_start_idx = idx+1
         
@@ -120,6 +149,20 @@ number_virtual_orbitals: int = len(virtual_symm)
 #print(number_occupied_orbitals + number_virtual_orbitals)
 
 
+### What orbitals are wanted?
+if orbitals == ['']:
+    wanted_orbitals = [x for x in range(number_occupied_orbitals + number_virtual_orbitals)]
+elif len(orbitals) > 0:
+    wanted_orbitals: List[int] = []
+    for x in orbitals:
+        if x.lower() == "homo":
+            wanted_orbitals.append(number_occupied_orbitals)
+        elif x.lower() == "lumo":
+            wanted_orbitals.append(number_occupied_orbitals+1)
+        else:
+            wanted_orbitals.append(int(x))
+else:
+    raise Exception("something went wrong with wanted_orbitals")
 
 ####################################
 ### Grab the molecular orbital table
@@ -200,6 +243,11 @@ def saveData(MO_numbers
 
     data.update(MO_data)
 
+def any_in(l1: List, l2:List):
+    for el in l1:
+        if el in l2:
+            return True
+    return False 
 
 ### WE ARE ASSUMING THAT the Number of MO orbitals will be the number of atomic orbitals
 if not MO_table_start_idx:
@@ -230,18 +278,20 @@ for line in MO_table_lines:
         atomic_data = []
         
         MO_numbers = [int(x) for x in line.strip().split()]
+        if not any_in(MO_numbers, wanted_orbitals):
+            MO_numbers = None
 
     ### Match eigenvalues line
-    elif eigenvalues_pattern.match(line):
+    elif eigenvalues_pattern.match(line) and MO_numbers:
         eigenvalues = [float(x) for x in line[23:].split()]
 
     ### Match isOccupied line
-    elif isOccupied_pattern.match(line):
+    elif isOccupied_pattern.match(line) and MO_numbers:
         isOccupied = [True if x.lower() == "o" else False for x in line.strip().split()]
         pass
 
     ### Match atomic orbital contribution line
-    elif a_orbital_pattern.match(line):
+    elif a_orbital_pattern.match(line) and MO_numbers:
         ### TODO: split into relevant columns of information
         ao_number = int(line[0:4])
         tmp_atom_num = line[5:8]
@@ -262,6 +312,12 @@ for line in MO_table_lines:
         atomic_data.append(row)
 
 ### TODO: save the last chunk
-saveData(MO_numbers, isOccupied, eigenvalues, atomic_data)
+if MO_numbers:
+    saveData(MO_numbers, isOccupied, eigenvalues, atomic_data)
+
+#############################
+# Save atomic coordinates
+#############################
+data["atomic_coords"] = atomic_coords
 
 json.dump(data, sys.stdout)
