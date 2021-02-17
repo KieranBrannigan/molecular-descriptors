@@ -24,7 +24,7 @@ contents of the script:
     TODO - calc inertia tensor for orbital
 """
 
-from typing import Dict, List, NamedTuple, Tuple
+from typing import Dict, Iterator, List, NamedTuple, Tuple, Union
 import json
 
 from typing_extensions import TypedDict
@@ -32,6 +32,10 @@ from typing_extensions import TypedDict
 import numpy as np
 
 class AtomicCoords(TypedDict):
+    ### TODO check: is this { "atom_num": (x,y,z) } ??
+    """
+    This isn't quite right, this is suggesting atomcoord: AtomicCoords = {"str": (0.1,0.2,0.1)}
+    """
     str: Tuple[float, float, float]
 
 class AtomicOrbital(TypedDict):
@@ -45,58 +49,99 @@ class AtomicContributions(TypedDict):
     atomic_orbitals: List[AtomicOrbital]
 
 
-class MolecularOrbital(TypedDict):
+class MolecularOrbitalDict(TypedDict):
     occupied: bool
     eigenvalue: float
     ### atomic_contribution = {"{atom_number}" : AtomicContributions}
     atomic_contributions: Dict[str, AtomicContributions]
 
 
-def calc_atomic_weight(atomic_contribution: AtomicContributions) -> float:
+class MolecularOrbital:
+    def __init__(self, mo: MolecularOrbitalDict, atomic_coords: AtomicCoords):
+        self.mo = mo
+        self.atomic_coords = atomic_coords
+
+    
+    def calc_atomic_weight(self, atomic_contribution: AtomicContributions) -> float:
+        """
+        the weight on each atom is the sum of the square of the coefficient
+        for all atomic orbital centred on that atom.
+        """
+        atomic_orbitals = atomic_contribution["atomic_orbitals"]
+        return sum(
+            [a_orbital["energy"]**2 for a_orbital in atomic_orbitals]
+        )
+
+
+    def calc_IPR(self):
+        """
+        Inverse Participation ratio:
+        Measures how many atoms share the orbital.
+
+        IPR = [ SIGMA_i {(WH_i)^-2} ]^-1
+            IE for every atom i, calculate the square of the weight on that atom,
+            sum them all together and take the inverse.
+
+            in python: sum([weight(i)**-2 for i in orbital.atoms])**-1
+        """
+
+        return sum(
+            [self.calc_atomic_weight(
+                i)**-2 for i in self.mo["atomic_contributions"].values()]
+        )**-1
+
+
+    def calc_weight_on_heteroatoms(self, heteroatom_symbol: str):
+        """
+        Weight on heteroatoms:
+        One can define the weight of the orbital on N as:
+            W_N = SIGMA_{i if S_i=N} { WH_i }
+                IE: sum the weight for each atom i, where atomic symbol is N
+
+                in python: sum([weight(i) for i in orbital.atoms if i.atomic_symbol == "N"]) 
+        """
+        return sum(
+            [self.calc_atomic_weight(i) for i in self.mo["atomic_contributions"].values(
+            ) if i["atom_symbol"].strip().lower() == heteroatom_symbol.strip().lower()]
+        )
+
+    def get_inertia_tensor(self) -> np.ndarray:
+        r"""
+        See https://en.wikipedia.org/wiki/Moment_of_inertia#Inertia_tensor
+
+        For rigid object of N point masses m_k
+
+        Translating for use in Mol. orbitals:
+            mass m_k will refer to the orbital weight on atom k.
+        """
+
+        ### TODO: optimisation, maybe we could make it as a generator? Or from a map function.
+
+        def mapfun(atom_num: str):
+            atomic_contribution: AtomicContributions = self.mo[atom_num]
+            return PointMass(
+                mass=self.calc_atomic_weight(atomic_contribution),
+                coords=self.atomic_coords[atom_num]
+                )
+
+        masses: Iterator[PointMass] = map(mapfun, self.mo["atomic_contributions"].keys())
+        print(list(masses))
+        ### construct the masses objects (List[PointMass])
+
+
+        ### pass to calc_inertia_tensor
+        return calc_inertia_tensor(masses)
+
+class PointMass(NamedTuple):
+    mass: float
+    coords: Tuple[float, float, float]
+
+
+def calc_inertia_tensor(masses: Union[List[PointMass], Iterator[PointMass]]) -> np.ndarray:
     """
-    the weight on each atom is the sum of the square of the coefficient
-    for all atomic orbital centred on that atom.
-    """
-    atomic_orbitals = atomic_contribution["atomic_orbitals"]
-    return sum(
-        [a_orbital["energy"]**2 for a_orbital in atomic_orbitals]
-    )
+    given a list of point masses, with mass m and coords (x,y,z), calculate and return
+    the inertia tensor.
 
-
-def calc_IPR(mo: MolecularOrbital):
-    """
-    Inverse Participation ratio:
-    Measures how many atoms share the orbital.
-
-    IPR = [ SIGMA_i {(WH_i)^-2} ]^-1
-        IE for every atom i, calculate the square of the weight on that atom,
-         sum them all together and take the inverse.
-
-        in python: sum([weight(i)**-2 for i in orbital.atoms])**-1
-    """
-
-    return sum(
-        [calc_atomic_weight(
-            i)**-2 for i in mo["atomic_contributions"].values()]
-    )**-1
-
-
-def calc_weight_on_heteroatoms(mo: MolecularOrbital, heteroatom_symbol: str):
-    """
-    Weight on heteroatoms:
-    One can define the weight of the orbital on N as:
-        W_N = SIGMA_{i if S_i=N} { WH_i }
-            IE: sum the weight for each atom i, where atomic symbol is N
-
-            in python: sum([weight(i) for i in orbital.atoms if i.atomic_symbol == "N"]) 
-    """
-    return sum(
-        [calc_atomic_weight(i) for i in mo["atomic_contributions"].values(
-        ) if i["atom_symbol"].strip().lower() == heteroatom_symbol.strip().lower()]
-    )
-
-def calc_inertia_tensor(mo: MolecularOrbital, atom_coords: AtomicCoords):
-    r"""
     See https://en.wikipedia.org/wiki/Moment_of_inertia#Inertia_tensor
 
     For rigid object of N point masses m_k,
@@ -107,22 +152,14 @@ def calc_inertia_tensor(mo: MolecularOrbital, atom_coords: AtomicCoords):
         r_k = [x_1^(k), x_2^(k), x_3^(k)] the vector to the point mass m_k
         kroneker_ij is the Kronecker delta (IE 1 if i==j else 0)
 
-    Translating for use in Mol. orbitals:
-        mass m_k will refer to the orbital weight on atom k.
-
-
     physical interpretation?
     I_xx is the moment of inertia around the x axis for things that are being rotated around the x axis
     and I_yx is the moment of inertia around the x axis for an object being rotated around the y axis.
-
-
     """
-
     def tensor_element(i, j):
         total = 0
-        for atom_number, atomic_contribution in mo["atomic_contributions"].items():
-            m_k = calc_atomic_weight(atomic_contribution)
-            x, y, z = atom_coords[atom_number]
+        for mass, coords in masses:
+            x, y, z = coords
             ijmap = {
                 1: x,
                 2: y,
@@ -132,7 +169,7 @@ def calc_inertia_tensor(mo: MolecularOrbital, atom_coords: AtomicCoords):
                 rhs = x**2 + y**2 + z**2 - ijmap[i]**2
             else:
                 rhs = - (ijmap[i] * ijmap[j])
-            result = m_k * rhs
+            result = mass * rhs
             total += result
         return total
 
@@ -141,6 +178,7 @@ def calc_inertia_tensor(mo: MolecularOrbital, atom_coords: AtomicCoords):
         , [tensor_element(2,1), tensor_element(2,2), tensor_element(2,3),]
         , [tensor_element(3,1), tensor_element(3,2), tensor_element(3,3)]
     ])
+
 
 
 def runtests():
@@ -180,24 +218,26 @@ if __name__ == "__main__":
     orbital_file = sys.argv[1]
     with open(orbital_file, 'r') as JsonFile:
         content = json.load(JsonFile)
-    homo: MolecularOrbital = content["54"]
+    homo_dict: MolecularOrbitalDict = content["54"]
     atom_coords: AtomicCoords = content["atomic_coords"]
+
+    homo = MolecularOrbital(homo_dict, atom_coords)
 
     print(f"""
 
     input file {sys.argv[1]}
 
-    inverse participation ratio = {calc_IPR(homo)}
+    inverse participation ratio = {homo.calc_IPR()}
     (minimum is 1, maximum is number of atoms)
     ----------------------------------------------
-    weight on Nitrogen (N) = {calc_weight_on_heteroatoms(homo, "N")}
-    weight on Oxygen (O) = {calc_weight_on_heteroatoms(homo, "O")}
-    weight on Oxygen (C) = {calc_weight_on_heteroatoms(homo, "C")}
-    weight on Oxygen (H) = {calc_weight_on_heteroatoms(homo, "H")}
+    weight on Nitrogen (N) = {homo.calc_weight_on_heteroatoms("N")}
+    weight on Oxygen (O) = {homo.calc_weight_on_heteroatoms("O")}
+    weight on Oxygen (C) = {homo.calc_weight_on_heteroatoms("C")}
+    weight on Oxygen (H) = {homo.calc_weight_on_heteroatoms("H")}
 
     ----------------------------------------------
 
     Inertia tensor is:
-    {calc_inertia_tensor(homo, atom_coords)}
+    {homo.get_inertia_tensor()}
 
     """)
