@@ -21,6 +21,7 @@ from PIL import ImageDraw
 from draw_molecule import SMILEStoFiles, concat_images
 from database import DB
 from regression import distance_from_regress
+from util import density_scatter
 db = DB()
 
 geomsFile = "geoms.smi"
@@ -147,14 +148,16 @@ def main2():
 
     print(f"D.__len__() = {D.__len__()}")
     ### Plot D on x axis, and Y on y axis
-    ax = plt.subplot()
-    ax.scatter(D, Y,)
+    #colours = makeDensityColours(Y)
+    #ax.scatter(D, Y,)
+    ax = density_scatter(D, Y, bins=1000, cmap="gnuplot", s=10,)
     #ax.set_title("How Y (= |dE_i - dE_j|) varies with D (= 1-T_ij)\nwhere where dE_z = distance of point z from the linear regression line.")
     ax.set_xlabel("Structural Distance, D")
     ax.set_ylabel("Difference in energy deviation, Y (AU)")
 
     regress = linregress(D,Y)
     print(regress)
+    plt.tight_layout()
     plt.show()
 
     distribution = {}
@@ -182,7 +185,7 @@ def get_nearest_neighbours(mol_name, k=5,) -> List:
     neighbours = [(x[2], x[0]) if x[1][0] == mol_name else (x[1],x[0]) for x in k_mol_pairs]
     return neighbours
 
-def main_3():
+def main3():
     ##################################
     """
     For each molecule, plot dE vs the avg from the 5 closest molecules.
@@ -259,4 +262,6 @@ def main_3():
 
 
 if __name__ == "__main__":
-    main_3()
+    #main1()
+    main2()
+    #main3()
