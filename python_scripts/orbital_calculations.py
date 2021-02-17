@@ -30,6 +30,7 @@ import json
 from typing_extensions import TypedDict
 
 import numpy as np
+from numpy.linalg import eig
 
 class AtomicCoords(TypedDict):
     ### TODO check: is this { "atom_num": (x,y,z) } ??
@@ -135,6 +136,9 @@ class MolecularOrbital:
 class PointMass(NamedTuple):
     mass: float
     coords: Tuple[float, float, float]
+
+def calc_principle_axes(inertiaTensor):
+    return eig(inertiaTensor)
 
 
 def calc_inertia_tensor(masses: Union[List[PointMass], Iterator[PointMass]]) -> np.ndarray:
