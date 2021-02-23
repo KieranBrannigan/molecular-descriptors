@@ -13,8 +13,8 @@ from rdkit import Chem
 
 from PIL.Image import Image
 
-from draw_molecule import PILFromSmiles, SMILEStoFiles, concat_images
-from database import DB
+from python_modules.draw_molecule import PILFromSmiles, SMILEStoFiles, concat_images
+from python_modules.database import DB
 
 SIG_FIGS = 4
 db=DB()

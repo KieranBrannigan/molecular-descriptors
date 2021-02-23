@@ -59,3 +59,11 @@ def density_scatter( x , y, ax = None, sort = True, bins = 20, cmap='jet', **kwa
     cbar.ax.set_ylabel('Density')
 
     return ax
+
+def scale_array(X: np.ndarray, min_, max_)-> np.ndarray:
+    """
+    See here: https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MinMaxScaler.html
+    """
+    X_std = (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0))
+    X_scaled = X_std * (max_ - min_) + min_
+    return X_scaled

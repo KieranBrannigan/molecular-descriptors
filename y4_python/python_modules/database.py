@@ -6,7 +6,7 @@ from typing import List
 import numpy as np
 from rdkit.DataStructs.cDataStructs import BitVectToText, CreateFromBitString
 
-from util import fingerprint_from_smiles
+from .util import fingerprint_from_smiles
 
 # for idx, row in enumerate(blyp_data):
 #     if row[0] == pm7_data[idx][0]:
@@ -20,7 +20,7 @@ class DB:
     PM7 = 'E_pm7'
 
     def __init__(self):
-        self.conn = sqlite3.connect("D:\Projects\Y4Project\python\energies_database.db")
+        self.conn = sqlite3.connect("D:\\Projects\\Y4Project\\python\\energies_database.db")
         self.cur = self.conn.cursor()
 
     def table_exists(self):
@@ -103,12 +103,12 @@ class DB:
         )
         return r.fetchall()
 
-    def get_smiles(self) -> List[str]:
+    def get_smiles(self) -> np.ndarray:
         "Return smiles ordered by rowid"
         r = self.cur.execute(
             "SELECT `smiles` FROM dataset ORDER BY `rowid`"
         )
-        return np.asarray(r.fetchall())[:,0]
+        return np.array(r.fetchall())[:,0]
 
     def get_smiles_for_mol(self, mol_name):
         r = self.cur.execute(

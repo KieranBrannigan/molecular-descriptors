@@ -1,6 +1,6 @@
 from scipy.stats import linregress
 
-from database import DB
+from .database import DB
 
 db = DB()
 

@@ -5,7 +5,7 @@ from rdkit.Chem import Draw, MolFromSmiles, AllChem, Mol, SanitizeMol, SanitizeF
 
 from PIL import Image, ImageFont, ImageDraw
 
-from util import create_dir_if_not_exists, sanitize_without_hypervalencies
+from .util import create_dir_if_not_exists, sanitize_without_hypervalencies
 
 def PILFromSmiles(smiles:str):
     """

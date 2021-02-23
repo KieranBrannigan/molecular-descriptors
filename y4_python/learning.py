@@ -17,9 +17,9 @@ import numpy as np
 import pandas as pd
 from rdkit import Chem, DataStructs
 
-from database import DB
-from util import sanitize_without_hypervalencies
-from regression import distance_from_regress
+from .python_modules.database import DB
+from .python_modules.util import sanitize_without_hypervalencies
+from .python_modules.regression import distance_from_regress
 
 def tanimotoSimilarity(i_fp, j_fp):
     """
