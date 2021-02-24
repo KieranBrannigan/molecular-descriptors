@@ -95,5 +95,47 @@ class TestOrbitalCalculations(unittest.TestCase):
         self.assertEqual(homoNum, exp_homoNum)
         self.assertEqual(lumoNum, exp_lumoNum)
 
+        test = {
+            "24": {"occupied": True},
+            "atomic_coords": [1,2,3],
+            "56": {"occupied": False}
+        }
+
+        exp_homoNum, exp_lumoNum = 24,56
+
+        homoNum, lumoNum = MolecularOrbital.homoLumoNumbersFromJson(test)
+
+        self.assertEqual(homoNum, exp_homoNum)
+        self.assertEqual(lumoNum, exp_lumoNum)
+
+        test = {
+            "56": {"occupied": False},
+            "atomic_coords": [1,2,3],
+            "55": {"occupied": True}
+        }
+
+        exp_homoNum, exp_lumoNum = 55,56
+
+        homoNum, lumoNum = MolecularOrbital.homoLumoNumbersFromJson(test)
+
+        self.assertEqual(homoNum, exp_homoNum)
+        self.assertEqual(lumoNum, exp_lumoNum)
+
+        test = {
+            "24": {"occupied": True},
+            "atomic_coords": [1,2,3],
+            "56": {"occupied": True}
+        }
+
+        exp_homoNum, exp_lumoNum = 56,False
+
+        homoNum, lumoNum = MolecularOrbital.homoLumoNumbersFromJson(test)
+
+        self.assertEqual(homoNum, exp_homoNum)
+        self.assertEqual(lumoNum, exp_lumoNum)
+        
+
+        
+
 if __name__ == '__main__':
     unittest.main()
