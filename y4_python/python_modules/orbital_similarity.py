@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from functools import reduce
-from typing import Tuple, Union
+from typing import Iterable, Iterator, List, Set, Tuple, Union
 
 from .orbital_calculations import MolecularOrbital
 
@@ -21,10 +21,11 @@ class CalculatedMolecularOrbital:
     principleAxes: np.ndarray
     principleMoments: np.ndarray
     IPR: float
+    molecule_name: str = "N/A"
 
 
 
-def inertia_difference(moments1: Union[np.ndarray, Tuple[float, float, float]], moments2: Union[np.ndarray, Tuple[float, float, float]], ):
+def inertia_difference(moments1: Union[np.ndarray, Tuple[float, float, float]], moments2: Union[np.ndarray, Tuple[float, float, float]], ) -> float:
     """
     Calculate some difference between (calculated) two molecular orbitals
     based on there moment of inertia.
@@ -50,7 +51,7 @@ def percent_heteroatom_difference(mo1: CalculatedMolecularOrbital, mo2: Calculat
     return 0
 
 
-def orbital_distance(mo1: CalculatedMolecularOrbital, mo2: CalculatedMolecularOrbital, inertia_coeff=1, IPR_coeff=1, O_coeff=1, N_coeff=1):
+def orbital_distance(mo1: CalculatedMolecularOrbital, mo2: CalculatedMolecularOrbital, inertia_coeff:float=1., IPR_coeff:float=1, O_coeff:float=1, N_coeff:float=1):
     """
     Compute the Distance between 2 (calculated) molecular orbitals.
 
@@ -71,3 +72,19 @@ def orbital_distance(mo1: CalculatedMolecularOrbital, mo2: CalculatedMolecularOr
     distance = inertia_coeff * inertia_diff + IPR_coeff * IPR_diff + O_coeff * O_diff + N_coeff * N_diff
     
     return distance
+
+
+def sort_molecular_orbital_pairs(
+    orbitals: Union[Iterable[CalculatedMolecularOrbital], Iterator[CalculatedMolecularOrbital]]
+    ) -> List[Tuple[CalculatedMolecularOrbital, CalculatedMolecularOrbital, float]]:
+    """
+    Given list of molecular orbitals, order them in pairs, from 
+    most similar (least distant) to least similar (most distant).
+    """
+    from itertools import combinations
+
+    pairs = combinations(orbitals, 2)
+
+    similarities = [(x,y, orbital_distance(x,y)) for x,y in pairs]
+
+    return sorted(similarities, key=lambda x: x[2])

@@ -26,14 +26,14 @@ def compare2files(file1, file2):
     ### Just comparing HOMO for now
     homo_num, lumo_num = MolecularOrbital.homoLumoNumbersFromJson(file1)
     homo1 = MolecularOrbital.fromJsonFile(file1, homo_num)
-    homo1_principle_moments = homo1.get_principle_moments()
-    homo1_principle_axes = homo1.get_principle_axes()
+    homo1_principle_moments = homo1.principle_moments
+    homo1_principle_axes = homo1.principle_axes
     ax1 = homo1.plot(file1_name, 121, fig)
 
     homo_num, lumo_num = MolecularOrbital.homoLumoNumbersFromJson(file2)
     homo2 = MolecularOrbital.fromJsonFile(file2, homo_num)
-    homo2_principle_moments = homo2.get_principle_moments()
-    homo2_principle_axes = homo2.get_principle_axes()
+    homo2_principle_moments = homo2.principle_moments
+    homo2_principle_axes = homo2.principle_axes
     ax2 = homo2.plot(file2_name, 122, fig)
 
 
@@ -51,9 +51,6 @@ def compare2files(file1, file2):
         ax2.view_init(10, i*2)
         return fig
     
-    # if len(input("Show next plot?")) > 0:
-    #     plt.show()
-    
     ### save fig
     # fig.tight_layout()
     # anim = FuncAnimation(fig, update, frames=180, interval=1)
@@ -68,12 +65,12 @@ def main(directory):
     #     , 2)
 
     filepairs = [
-            # ("output_naphthalene.json", "output_butyl_naphthalene.json")
-            # , ("output_anthracene.json", "output_butyl_anthracene.json")
-            # , ("output_naphthalene.json", "output_naphthalene_butyl_anthracene.json")
-            # , ("output_anthracene.json", "output_naphthalene_butyl_anthracene.json")
-            # , ("output_diphenyl_butadiene.json", "output_diphenyl_hexatriene.json")
-            ("output_new_butyl-naphtalene.json", "output_new_naphtalene.json")
+            ("output_naphthalene.json", "output_butyl_naphthalene.json")
+            , ("output_anthracene.json", "output_butyl_anthracene.json")
+            , ("output_naphthalene.json", "output_naphthalene_butyl_anthracene.json")
+            , ("output_anthracene.json", "output_naphthalene_butyl_anthracene.json")
+            , ("output_diphenyl_butadiene.json", "output_diphenyl_hexatriene.json")
+            , ("output_new_butyl-naphtalene.json", "output_new_naphtalene.json")
     ]
 
     for file1, file2 in filepairs:
@@ -83,6 +80,9 @@ def main(directory):
         compare2files(naphthalene_file, butyl_naphthalene_file)
 
         print("\n----------------------------------------------\n")
+
+    plt.show()
+
 if __name__ == "__main__":
     main(
         os.path.join("..","sampleInputs","PM7_orbitals")

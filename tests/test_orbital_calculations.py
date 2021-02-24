@@ -3,7 +3,7 @@ import unittest
 
 import numpy as np
 
-from y4_python.python_modules.orbital_calculations import PointMass as PM, calc_inertia_tensor, calc_principle_axes
+from y4_python.python_modules.orbital_calculations import PointMass as PM, calc_inertia_tensor, calc_principle_axes, calc_center_of_mass
 
 
 class TestOrbitalCalculations(unittest.TestCase):
@@ -28,10 +28,10 @@ class TestOrbitalCalculations(unittest.TestCase):
         #         masses.append(PM(mass=m/N, coords=(x/(a-1), y/(a-1), 0)))
 
         masses = [
-            PM(mass=0.25, coords=(0,0,0))
-            , PM(mass=0.25, coords=(0,1,0))
-            , PM(mass=0.25, coords=(1,0,0))
-            , PM(mass=0.25, coords=(1,1,0))
+            PM(mass=0.25, coords=np.array((0,0,0)))
+            , PM(mass=0.25, coords=np.array((0,1,0)))
+            , PM(mass=0.25, coords=np.array((1,0,0)))
+            , PM(mass=0.25, coords=np.array((1,1,0)))
         ]
 
         xx = yy = m*(2)
@@ -68,6 +68,32 @@ class TestOrbitalCalculations(unittest.TestCase):
             self.assertEqual(row.all(), result[idx].all())
 
         ### inertia tensor of triangle
+
+    def test_calc_center_of_mass(self):
+        masses = [
+            PM(mass=1, coords=np.array((0,0,0)))
+            , PM(mass=1, coords=np.array((-1,0,0)))
+            , PM(mass=1, coords=np.array((1,0,0)))
+        ]
+        expected = np.array([0,0,0])
+        result = calc_center_of_mass(masses)
+
+        self.assertEqual(expected.all(), result.all())
+
+    def test_homo_lumo_numbers_from_json(self):
+        from y4_python.python_modules.orbital_calculations import MolecularOrbital
+
+        test = {
+            "1": {"occupied": True},
+            "2": {"occupied": False}
+        }
+
+        exp_homoNum, exp_lumoNum = 1,2
+
+        homoNum, lumoNum = MolecularOrbital.homoLumoNumbersFromJson(test)
+
+        self.assertEqual(homoNum, exp_homoNum)
+        self.assertEqual(lumoNum, exp_lumoNum)
 
 if __name__ == '__main__':
     unittest.main()

@@ -40,7 +40,7 @@ from .util import scale_array
 
 class PointMass(NamedTuple):
     mass: float
-    coords: Tuple[float, float, float]
+    coords: np.ndarray
 
 class AtomicCoords(TypedDict):
     ### TODO check: is this { "atom_num": (x,y,z) } ??
@@ -67,69 +67,82 @@ class MolecularOrbitalDict(TypedDict):
     atomic_contributions: Dict[str, AtomicContribution]
 
 class MolecularOrbital:
+    HOMO: int = -1
+    LUMO: int = -2
 
-    def __init__(self, mo: MolecularOrbitalDict, atomic_coords: AtomicCoords):
+    def __init__(self, mo: MolecularOrbitalDict, atomic_coords: AtomicCoords, molecule_name="N/A"):
         self.mo = mo
         self.atomic_coords = atomic_coords
         self._masses: Optional[List[PointMass]] = None
-        self._center_of_mass: Optional[Tuple[float, float, float]] = None
+        self._center_of_mass: Optional[np.ndarray] = None
         self._inertia_tensor: Optional[np.ndarray] = None
         self._principle_axes: Optional[np.ndarray] = None
         self._principle_moments: Optional[np.ndarray] = None
+        self.molecule_name = molecule_name
 
     @property
     def masses(self) -> List[PointMass]:
-        if not self._masses:
+        if self._masses == None:
             self._masses = self.calc_masses()
         return self._masses
 
     @property
-    def center_of_mass(self) -> Tuple[float, float, float]:
-        if not self._center_of_mass:
+    def center_of_mass(self) -> np.ndarray:
+        if self._center_of_mass is None:
             self._center_of_mass = self.calc_center_of_mass()
         return self._center_of_mass
 
     @property
     def inertia_tensor(self) -> np.ndarray:
-        if not self._inertia_tensor:
+        if self._inertia_tensor is None:
             self._inertia_tensor = self.calc_inertia_tensor()
         return self._inertia_tensor
 
     @property
     def principle_axes(self) -> np.ndarray:
-        if not self._principle_axes:
+        if self._principle_axes is None:
             self.calc_principle_moments()
         return self._principle_axes # type: ignore  - self._principle_axes is set to ndarray in calc_principle_moments()
 
     @property
     def principle_moments(self) -> np.ndarray:
-        if not self._principle_moments:
+        if self._principle_moments is None:
             self.calc_principle_moments()
         return self._principle_moments # type: ignore  - self._principle_moments is set to ndarray in calc_principle_moments()
 
     @classmethod
-    def fromJsonFile(cls, orbital_file: str, mo_number: int) -> 'MolecularOrbital':
+    def fromJsonFile(cls, orbital_file: str, mo_number: int, molecule_name="N/A") -> 'MolecularOrbital':
         with open(orbital_file, 'r') as JsonFile:
             content = json.load(JsonFile)
+
+        if mo_number in [cls.HOMO, cls.LUMO]:
+            homo_num, lumo_num = cls.homoLumoNumbersFromJson(content)
+            if mo_number == cls.HOMO:
+                mo_number = homo_num
+            elif mo_number == cls.LUMO:
+                mo_number = lumo_num
+
+
         homo_dict: MolecularOrbitalDict = content[str(mo_number)]
         atom_coords: AtomicCoords = content["atomic_coords"]
 
-        return cls(homo_dict, atom_coords)
+        return cls(homo_dict, atom_coords, molecule_name=molecule_name)
 
     @staticmethod
-    def homoLumoNumbersFromJson(orbital_file: str) -> Tuple[int, int]:
-        with open(orbital_file, 'r') as JsonFile:
-            content: dict = json.load(JsonFile)
-        keys = list(content.keys())
+    def homoLumoNumbersFromJson(orbital_file_content: dict) -> Tuple[int, int]:
 
+        keys = list(orbital_file_content.keys())
+        try: keys.remove("atomic_coords") # ValueError if doesn't exist, which is fine.
+        except: pass
         for idx, mo_number in enumerate(keys):
-            if mo_number == "atomic_coords":
-                continue
-            if not content[mo_number]["occupied"]:
+            if not orbital_file_content[mo_number]["occupied"]:
                 HOMO_num = int(keys[idx-1])
                 LUMO_num = int(keys[idx])
+                break
+        else: # didn't break
+            raise Exception("Orbital file didn't have a lumo.")
 
-        return (HOMO_num, LUMO_num) # type:ignore
+        return (HOMO_num, LUMO_num) # type:ignore - I want it to throw if we don't get numbers
 
     
     def calc_atomic_weight(self, atomic_contribution: AtomicContribution) -> float:
@@ -183,10 +196,20 @@ class MolecularOrbital:
 
         Translating for use in Mol. orbitals:
             mass m_k will refer to the orbital weight on atom k.
+
+        When calculated, we should calculate relative to the center of mass, IE
+        we should translate the positions of all masses by -[center_of_mass]
+        
+        or: position relative to centre of mass, r_cm = r - cm  # vectors
+        where: r = position relative to origin; cm = position of center of mass
         """
+        def fun(pm: PointMass) -> PointMass:
+            return PointMass(mass=pm.mass, coords=(pm.coords-self.center_of_mass))
+        
+        masses_relative_to_CM = list(map(fun, self.masses))
 
         ### pass to calc_inertia_tensor
-        return calc_inertia_tensor(self.masses)
+        return calc_inertia_tensor(masses_relative_to_CM)
 
 
     def calc_masses(self) -> List[PointMass]:
@@ -195,12 +218,12 @@ class MolecularOrbital:
             atomic_contribution: AtomicContribution = self.mo["atomic_contributions"][atom_num]
             return PointMass(
                 mass=self.calc_atomic_weight(atomic_contribution),
-                coords=self.atomic_coords[atom_num]
+                coords=np.array(self.atomic_coords[atom_num])
                 )
 
         return list(map(mapfun, self.mo["atomic_contributions"].keys()))
 
-    def calc_center_of_mass(self) -> Tuple[float, float, float]:
+    def calc_center_of_mass(self) -> np.ndarray:
 
         return calc_center_of_mass(self.masses)
     
@@ -210,7 +233,7 @@ class MolecularOrbital:
         Then -> self.principleMoments, self.principleAxes = eig(self.inertiaTensor)
         """
 
-        self.principleMoments, self.principleAxes = eig(self.inertia_tensor)
+        self._principle_moments, self._principle_axes = eig(self.inertia_tensor)
 
     def plot(self, mol_name, axis_number, fig:Figure):
         import matplotlib.pyplot as plt
@@ -231,7 +254,7 @@ class MolecularOrbital:
 
         vectors = self.principle_axes
         moments = self.principle_moments
-        cx,cy,cz = self.center_of_mass
+        cx,cy,cz = self.center_of_mass # type:ignore
         
         for idx, vector in enumerate(vectors): # type:ignore - I'm pretty sure np.ndarray is an iterable
             #moment = moments[idx]
@@ -291,10 +314,8 @@ class MolecularOrbital:
 def calc_principle_axes(inertiaTensor):
     return eig(inertiaTensor)
 
-def vecAdd(v1, v2):
-    return tuple((v1[idx] + v2[idx] for idx in range(len(v1))))
 
-def calc_center_of_mass(masses: List[PointMass]) -> Tuple[float, float, float]:
+def calc_center_of_mass(masses: List[PointMass]) -> np.ndarray:
     """
     X_cm = sum( mass*position for point in masses ) / total mass
 
@@ -305,10 +326,11 @@ def calc_center_of_mass(masses: List[PointMass]) -> Tuple[float, float, float]:
     """
     from functools import reduce
 
+    ### TODO: The total mass is almost 1 (0.9999989...) Should I just set it to one, since this is probably a rounding/floating point error?
     total_mass = sum((x.mass for x in masses))
 
-    X_cm = [tuple(map(lambda coord: x.mass * coord / total_mass, x.coords)) for x in masses]
-    sum_ = reduce(vecAdd, X_cm)
+    map_ = map(lambda x: x.mass * x.coords / total_mass, masses)
+    sum_ = sum(np.array(list(map_)))
     return sum_
     
 
@@ -339,7 +361,7 @@ def calc_inertia_tensor(masses: List[PointMass]) -> np.ndarray:
     def tensor_element(i, j):
         total = 0
         for mass, coords in masses:
-            x, y, z = coords
+            x, y, z = coords # type: ignore
             if i==j:
                 i_xyz = locals()[ijmap[i]]
                 rhs = x**2 + y**2 + z**2 - i_xyz**2
