@@ -1,0 +1,266 @@
+{
+    "1": {
+        "occupied": true,
+        "eigenvalue": -0.00923,
+        "atomic_contributions": {
+            "1": {
+                "atom_symbol": "C",
+                "atomic_orbitals": [
+                    {
+                        "atomic_orbital_number": 1,
+                        "orbital_symbol": "1S",
+                        "energy": 0.0
+                    },
+                    {
+                        "atomic_orbital_number": 2,
+                        "orbital_symbol": "1PX",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 3,
+                        "orbital_symbol": "1PY",
+                        "energy": 0.0
+                    },
+                    {
+                        "atomic_orbital_number": 4,
+                        "orbital_symbol": "1PZ",
+                        "energy": 1
+                    }
+                ]
+            },
+            "2": {
+                "atom_symbol": "C",
+                "atomic_orbitals": [
+                    {
+                        "atomic_orbital_number": 5,
+                        "orbital_symbol": "1S",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 6,
+                        "orbital_symbol": "1PX",
+                        "energy": 0.0
+                    },
+                    {
+                        "atomic_orbital_number": 7,
+                        "orbital_symbol": "1PY",
+                        "energy": 0.0
+                    },
+                    {
+                        "atomic_orbital_number": 8,
+                        "orbital_symbol": "1PZ",
+                        "energy": 1
+                    }
+                ]
+            },
+            "3": {
+                "atom_symbol": "C",
+                "atomic_orbitals": [
+                    {
+                        "atomic_orbital_number": 9,
+                        "orbital_symbol": "1S",
+                        "energy": 0.0
+                    },
+                    {
+                        "atomic_orbital_number": 10,
+                        "orbital_symbol": "1PX",
+                        "energy": 0.0
+                    },
+                    {
+                        "atomic_orbital_number": 11,
+                        "orbital_symbol": "1PY",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 12,
+                        "orbital_symbol": "1PZ",
+                        "energy": 1
+                    }
+                ]
+            },
+            "4": {
+                "atom_symbol": "C",
+                "atomic_orbitals": [
+                    {
+                        "atomic_orbital_number": 13,
+                        "orbital_symbol": "1S",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 14,
+                        "orbital_symbol": "1PX",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 15,
+                        "orbital_symbol": "1PY",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 16,
+                        "orbital_symbol": "1PZ",
+                        "energy": 1
+                    }
+                ]
+            },
+            "5": {
+                "atom_symbol": "C",
+                "atomic_orbitals": [
+                    {
+                        "atomic_orbital_number": 13,
+                        "orbital_symbol": "1S",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 14,
+                        "orbital_symbol": "1PX",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 15,
+                        "orbital_symbol": "1PY",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 16,
+                        "orbital_symbol": "1PZ",
+                        "energy": 0
+                    }
+                ]
+            }
+        }
+    },
+    "2": {
+        "occupied": false,
+        "eigenvalue": -0.00923,
+        "atomic_contributions": {
+            "1": {
+                "atom_symbol": "C",
+                "atomic_orbitals": [
+                    {
+                        "atomic_orbital_number": 1,
+                        "orbital_symbol": "1S",
+                        "energy": 0.0
+                    },
+                    {
+                        "atomic_orbital_number": 2,
+                        "orbital_symbol": "1PX",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 3,
+                        "orbital_symbol": "1PY",
+                        "energy": 0.0
+                    },
+                    {
+                        "atomic_orbital_number": 4,
+                        "orbital_symbol": "1PZ",
+                        "energy": 1
+                    }
+                ]
+            },
+            "2": {
+                "atom_symbol": "C",
+                "atomic_orbitals": [
+                    {
+                        "atomic_orbital_number": 5,
+                        "orbital_symbol": "1S",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 6,
+                        "orbital_symbol": "1PX",
+                        "energy": 0.0
+                    },
+                    {
+                        "atomic_orbital_number": 7,
+                        "orbital_symbol": "1PY",
+                        "energy": 0.0
+                    },
+                    {
+                        "atomic_orbital_number": 8,
+                        "orbital_symbol": "1PZ",
+                        "energy": 1
+                    }
+                ]
+            },
+            "3": {
+                "atom_symbol": "C",
+                "atomic_orbitals": [
+                    {
+                        "atomic_orbital_number": 9,
+                        "orbital_symbol": "1S",
+                        "energy": 0.0
+                    },
+                    {
+                        "atomic_orbital_number": 10,
+                        "orbital_symbol": "1PX",
+                        "energy": 0.0
+                    },
+                    {
+                        "atomic_orbital_number": 11,
+                        "orbital_symbol": "1PY",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 12,
+                        "orbital_symbol": "1PZ",
+                        "energy": 1
+                    }
+                ]
+            },
+            "4": {
+                "atom_symbol": "C",
+                "atomic_orbitals": [
+                    {
+                        "atomic_orbital_number": 13,
+                        "orbital_symbol": "1S",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 14,
+                        "orbital_symbol": "1PX",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 15,
+                        "orbital_symbol": "1PY",
+                        "energy": -0.0
+                    },
+                    {
+                        "atomic_orbital_number": 16,
+                        "orbital_symbol": "1PZ",
+                        "energy": 1
+                    }
+                ]
+            }
+        }
+    },
+    "atomic_coords": {
+        "1": [
+            0,
+            0,
+            0
+        ],
+        "2": [
+            0,
+            1,
+            0
+        ],
+        "3": [
+            1,
+            0,
+            0
+        ],
+        "4": [
+            1,
+            1,
+            0
+        ],
+        "5": [
+            0,
+            0,
+            0
+        ]
+    }
+}

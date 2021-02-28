@@ -70,7 +70,7 @@ class MolecularOrbital:
     HOMO: int = -1
     LUMO: int = -2
 
-    def __init__(self, mo: MolecularOrbitalDict, atomic_coords: AtomicCoords, molecule_name="N/A"):
+    def __init__(self, mo: MolecularOrbitalDict, atomic_coords: AtomicCoords, molecule_name:str="N/A", mo_number:int=0):
         self.mo = mo
         self.atomic_coords = atomic_coords
         self._masses: Optional[List[PointMass]] = None
@@ -79,6 +79,7 @@ class MolecularOrbital:
         self._principle_axes: Optional[np.ndarray] = None
         self._principle_moments: Optional[np.ndarray] = None
         self.molecule_name = molecule_name
+        self.mo_number = mo_number
 
     @property
     def masses(self) -> List[PointMass]:
@@ -126,7 +127,7 @@ class MolecularOrbital:
         homo_dict: MolecularOrbitalDict = content[str(mo_number)]
         atom_coords: AtomicCoords = content["atomic_coords"]
 
-        return cls(homo_dict, atom_coords, molecule_name=molecule_name)
+        return cls(homo_dict, atom_coords, molecule_name=molecule_name, mo_number=mo_number)
 
     @staticmethod
     def homoLumoNumbersFromJson(orbital_file_content: dict) -> Tuple[int, int]:
@@ -140,7 +141,8 @@ class MolecularOrbital:
                 LUMO_num = int(keys[idx])
                 break
         else: # didn't break
-            raise Exception("Orbital file didn't have a lumo.")
+            HOMO_num = int(keys[idx]) # type:ignore - I want it to throw if we don't get numbers
+            LUMO_num = False
 
         return (HOMO_num, LUMO_num) # type:ignore - I want it to throw if we don't get numbers
 
@@ -269,12 +271,11 @@ class MolecularOrbital:
 
         return ax
 
-    def get_atom_plot_values(self):
+    def get_atom_plot_values(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, List[int]]:
 
         xs = []
         ys = []
         zs = []
-        ### TODO: scale the weights between a min and max value
         weights = []
         colours = []
         atom_numbers = []

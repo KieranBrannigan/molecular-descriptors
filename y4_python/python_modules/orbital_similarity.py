@@ -28,7 +28,7 @@ class CalculatedMolecularOrbital:
 def inertia_difference(moments1: Union[np.ndarray, Tuple[float, float, float]], moments2: Union[np.ndarray, Tuple[float, float, float]], ) -> float:
     """
     Calculate some difference between (calculated) two molecular orbitals
-    based on there moment of inertia.
+    based on their moment of inertia.
     """
 
     return sum(

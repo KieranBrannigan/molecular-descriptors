@@ -3,7 +3,7 @@
 set IN_FOLDER=%1
 set OUT_FOLDER=%2
 
-set PARSER="D:\Projects\y4-project\scripts\parse_orbitals.py"
+set PARSER="D:\Projects\y4-project\y4_python\parse_orbitals.py"
 
 for %%f in (%IN_FOLDER%\*.log) do (
     > %OUT_FOLDER%\%%~nf.json (

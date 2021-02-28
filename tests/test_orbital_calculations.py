@@ -3,7 +3,7 @@ import unittest
 
 import numpy as np
 
-from y4_python.python_modules.orbital_calculations import PointMass as PM, calc_inertia_tensor, calc_principle_axes, calc_center_of_mass
+from y4_python.python_modules.orbital_calculations import MolecularOrbital, PointMass as PM, calc_inertia_tensor, calc_principle_axes, calc_center_of_mass
 
 
 class TestOrbitalCalculations(unittest.TestCase):
@@ -134,6 +134,29 @@ class TestOrbitalCalculations(unittest.TestCase):
         self.assertEqual(homoNum, exp_homoNum)
         self.assertEqual(lumoNum, exp_lumoNum)
         
+    def test_calc_atomic_weight(self):
+        """
+        Sum the weights on every atom and check it equals eigenvalue of MO.
+            - This won't ever be correct. The sum should be 1.
+        """
+        import os
+        testFile = os.path.join(
+            os.path.dirname(__file__), "anthracene_output.json"
+        )
+        for mo_number in [31,32,33,34,35]:
+            mo = MolecularOrbital.fromJsonFile(testFile, mo_number)
+            mo_eigenvalue = mo.mo["eigenvalue"]
+            # sum all atomic weights
+            calculated = sum(
+                (mo.calc_atomic_weight(x) for x in mo.mo["atomic_contributions"].values())
+            )
+
+            self.assertEqual(mo_eigenvalue, calculated,
+                msg=f"calculated = {calculated} , mo_eigenvalue = {mo_eigenvalue}"
+            )
+
+
+
 
         
 
