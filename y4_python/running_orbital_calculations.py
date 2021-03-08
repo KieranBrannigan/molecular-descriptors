@@ -13,6 +13,14 @@ def reducefname(filename):
         molname: str = os.path.splitext(os.path.basename(filename))[0]
         return molname.replace("_output","").upper()
 
+def logfun(homo: MolecularOrbital):
+    print(homo.molecule_name)
+    print(f"HOMO number = {homo.mo_number}")
+    print(f"centre of mass = {homo.center_of_mass}")
+    print(f"principle moments: ")
+    print(homo.principle_moments)
+    print(f"principle axes: ")
+    print(homo.principle_axes)
 
 def compare2files(file1: str, file2: str):
     """
@@ -24,23 +32,16 @@ def compare2files(file1: str, file2: str):
     file1_name = reducefname(os.path.basename(file1))
     file2_name = reducefname(os.path.basename(file2))
     ### Just comparing HOMO for now
-    homo1 = MolecularOrbital.fromJsonFile(file1, MolecularOrbital.LUMO, file1_name)
+    homo1 = MolecularOrbital.fromJsonFile(file1, MolecularOrbital.HOMO, molecule_name=file1_name, weight_scaling_factor=10)
     homo1_principle_moments = homo1.principle_moments
     homo1_principle_axes = homo1.principle_axes
     ax1 = homo1.plot(file1_name, 121, fig)
 
-    homo2 = MolecularOrbital.fromJsonFile(file2, MolecularOrbital.LUMO, file2_name)
+    homo2 = MolecularOrbital.fromJsonFile(file2, MolecularOrbital.HOMO, molecule_name=file2_name, weight_scaling_factor=10)
     homo2_principle_moments = homo2.principle_moments
     homo2_principle_axes = homo2.principle_axes
     ax2 = homo2.plot(file2_name, 122, fig)
 
-    def logfun(homo: MolecularOrbital):
-        print(homo.molecule_name)
-        print(f"LUMO number = {homo.mo_number}")
-        print(f"principle moments: ")
-        print(homo.principle_moments)
-        print(f"principle axes: ")
-        print(homo.principle_axes)
 
     logfun(homo1)
     logfun(homo2)
@@ -57,7 +58,13 @@ def compare2files(file1: str, file2: str):
 
 
 def main(directory):
-    "directory contains the molecular orbitals json files"
+    """
+    directory contains the molecular orbitals json files
+
+    For each pair in filepairs,
+        run compare2files on pair
+        IE: print the molname, mo_num, princ. moments, princ. axes
+    """
 
     # filepairs = combinations(
     #     [x for x in os.listdir(directory) if x.endswith(".json") and not "ZINC" in x]

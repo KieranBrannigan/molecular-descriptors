@@ -24,7 +24,7 @@ contents of the script:
     TODO - calc inertia tensor for orbital
 """
 
-from typing import Dict, Iterable, Iterator, List, NamedTuple, Optional, Tuple, Union
+from typing import Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple, Union
 import json
 from matplotlib.figure import Figure
 
@@ -66,20 +66,34 @@ class MolecularOrbitalDict(TypedDict):
     ### atomic_contribution = {"{atom_number}" : AtomicContribution}
     atomic_contributions: Dict[str, AtomicContribution]
 
+
+class SerializedMolecularOrbital(TypedDict):
+    """
+    Holds some key information for molecular orbitals.
+
+    Created using MolecularOrbital.serialize()
+    """
+    centre_of_mass: Sequence[float]
+    principal_moments: Sequence[float]
+    principal_axes: Sequence[Sequence[float]]
+
 class MolecularOrbital:
     HOMO: int = -1
     LUMO: int = -2
 
-    def __init__(self, mo: MolecularOrbitalDict, atomic_coords: AtomicCoords, molecule_name:str="N/A", mo_number:int=0):
+    def __init__(self, mo: MolecularOrbitalDict, atomic_coords: AtomicCoords, molecule_name:str="N/A", mo_number:int=0, weight_scaling_factor=1):
         self.mo = mo
         self.atomic_coords = atomic_coords
         self._masses: Optional[List[PointMass]] = None
         self._center_of_mass: Optional[np.ndarray] = None
         self._inertia_tensor: Optional[np.ndarray] = None
-        self._principle_axes: Optional[np.ndarray] = None
-        self._principle_moments: Optional[np.ndarray] = None
+        self._principal_axes: Optional[np.ndarray] = None
+        self._principal_moments: Optional[np.ndarray] = None
         self.molecule_name = molecule_name
         self.mo_number = mo_number
+
+        ### see self.calc_masses
+        self.weight_scaling_factor = weight_scaling_factor
 
     @property
     def masses(self) -> List[PointMass]:
@@ -100,19 +114,19 @@ class MolecularOrbital:
         return self._inertia_tensor
 
     @property
-    def principle_axes(self) -> np.ndarray:
-        if self._principle_axes is None:
-            self.calc_principle_moments()
-        return self._principle_axes # type: ignore  - self._principle_axes is set to ndarray in calc_principle_moments()
+    def principal_axes(self) -> np.ndarray:
+        if self._principal_axes is None:
+            self.calc_principal_moments()
+        return self._principal_axes # type: ignore  - self._principal_axes is set to ndarray in calc_principal_moments()
 
     @property
-    def principle_moments(self) -> np.ndarray:
-        if self._principle_moments is None:
-            self.calc_principle_moments()
-        return self._principle_moments # type: ignore  - self._principle_moments is set to ndarray in calc_principle_moments()
+    def principal_moments(self) -> np.ndarray:
+        if self._principal_moments is None:
+            self.calc_principal_moments()
+        return self._principal_moments # type: ignore  - self._principal_moments is set to ndarray in calc_principal_moments()
 
     @classmethod
-    def fromJsonFile(cls, orbital_file: str, mo_number: int, molecule_name="N/A") -> 'MolecularOrbital':
+    def fromJsonFile(cls, orbital_file: str, mo_number: int, **kwargs) -> 'MolecularOrbital':
         with open(orbital_file, 'r') as JsonFile:
             content = json.load(JsonFile)
 
@@ -127,7 +141,7 @@ class MolecularOrbital:
         homo_dict: MolecularOrbitalDict = content[str(mo_number)]
         atom_coords: AtomicCoords = content["atomic_coords"]
 
-        return cls(homo_dict, atom_coords, molecule_name=molecule_name, mo_number=mo_number)
+        return cls(homo_dict, atom_coords, mo_number=mo_number, **kwargs)
 
     @staticmethod
     def homoLumoNumbersFromJson(orbital_file_content: dict) -> Tuple[int, int]:
@@ -145,6 +159,17 @@ class MolecularOrbital:
             LUMO_num = False
 
         return (HOMO_num, LUMO_num) # type:ignore - I want it to throw if we don't get numbers
+
+    def serialize(self) -> str:
+        """
+        Create a dict with important calculated properties and then convert to json str with json module.
+        """
+        obj: SerializedMolecularOrbital = {
+            "centre_of_mass": self.center_of_mass.tolist()
+            , "principal_moments": self.principal_moments.tolist()
+            , "principal_axes": self.principal_axes.tolist()
+        } # type: ignore
+        return json.dumps(obj)
 
     
     def calc_atomic_weight(self, atomic_contribution: AtomicContribution) -> float:
@@ -215,11 +240,10 @@ class MolecularOrbital:
 
 
     def calc_masses(self) -> List[PointMass]:
-
         def mapfun(atom_num: str):
             atomic_contribution: AtomicContribution = self.mo["atomic_contributions"][atom_num]
             return PointMass(
-                mass=self.calc_atomic_weight(atomic_contribution),
+                mass=self.calc_atomic_weight(atomic_contribution) ** self.weight_scaling_factor,
                 coords=np.array(self.atomic_coords[atom_num])
                 )
 
@@ -229,13 +253,13 @@ class MolecularOrbital:
 
         return calc_center_of_mass(self.masses)
     
-    def calc_principle_moments(self):
+    def calc_principal_moments(self):
         """
         Check if self.inertiaTensor is calculated. If not, calculate it (self.calc_inertia_tensor).
-        Then -> self.principleMoments, self.principleAxes = eig(self.inertiaTensor)
+        Then -> self.principalMoments, self.principalAxes = eig(self.inertiaTensor)
         """
 
-        self._principle_moments, self._principle_axes = eig(self.inertia_tensor)
+        self._principal_moments, self._principal_axes = eig(self.inertia_tensor)
 
     def plot(self, mol_name, axis_number, fig:Figure):
         import matplotlib.pyplot as plt
@@ -254,8 +278,8 @@ class MolecularOrbital:
         #         , color='green'
         #     )
 
-        vectors = self.principle_axes
-        moments = self.principle_moments
+        vectors = self.principal_axes
+        moments = self.principal_moments
         cx,cy,cz = self.center_of_mass # type:ignore
         
         for idx, vector in enumerate(vectors): # type:ignore - I'm pretty sure np.ndarray is an iterable
@@ -285,9 +309,9 @@ class MolecularOrbital:
             xs.append(x)
             ys.append(y)
             zs.append(z)
-            self.calc_atomic_weight(atomic_contribution)
+            weight = self.calc_atomic_weight(atomic_contribution) ** self.weight_scaling_factor
             weights.append(
-                self.calc_atomic_weight(atomic_contribution)
+                weight
             )
             colours.append(
                 self.get_colour_from_atomsymbol(atomic_contribution["atom_symbol"])
@@ -312,7 +336,7 @@ class MolecularOrbital:
         color = mapping.get(atom_symbol, "yellow")
         return mcolors.to_rgb(color)
 
-def calc_principle_axes(inertiaTensor):
+def calc_principal_axes(inertiaTensor):
     return eig(inertiaTensor)
 
 

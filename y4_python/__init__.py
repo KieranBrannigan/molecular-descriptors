@@ -1,28 +1,32 @@
 import os
 from pprint import pprint
 
-from .running_orbital_calculations import main, reducefname
+from matplotlib import pyplot as plt
+
+from rdkit.DataStructs.cDataStructs import ExplicitBitVect
+
+from .running_orbital_calculations import logfun, main as orbital_calculations_main, reducefname
+
+from .python_modules.database import main as db_main, DB
+
 
 def orbital_calculations():
     orbitalDir = os.path.join("sampleInputs", "PM7_optimisedOrbitals")
-    main(orbitalDir)
+    orbital_calculations_main(orbitalDir)
 
-#orbital_calculations()
 
 from .python_modules.orbital_similarity import CalculatedMolecularOrbital, sort_molecular_orbital_pairs
 from .python_modules.orbital_calculations import MolecularOrbital
 
-def run2():
+def print_sorted_orbital_pairs():
+    """
+    Gets the homo of each file in files.
+    Compares every pair based on distance.
+    Prints the sorted pairs in order of increasing distance
+    """
     orbitalDir = os.path.join("sampleInputs", "PM7_optimisedOrbitals")
-    files = {
-        'anthracene_output.json',
-        'butyl_anthracene_output.json',
-        'naphthalene_output.json',
-        'butyl_naphthalene_output.json',
-        'naphthalene_butyl_anthracene_output.json',
-        'diphenyl_butadiene_output.json',
-        'diphenyl_hexatriene_output.json',
-    }
+    
+    files = set((f for f in os.listdir(orbitalDir)))
     def fun(x):
         # x is file
         fname = os.path.join(orbitalDir, x)
@@ -47,10 +51,12 @@ def run2():
     
 
     
-run2()
 
 
 def run3():
+    """
+    Prints out x_i, y_i, z_i, W_i for homo of each file in files
+    """
     orbitalDir = os.path.join("sampleInputs", "PM7_optimisedOrbitals")
     files = {
         'anthracene_output.json',
@@ -90,5 +96,52 @@ def run3():
             # for row in rows:
             #     OutFile.write(",".join(row) + "\n")
 
+def plotting():
+    from .plotting import main
+    main()
 
-#run3()
+
+def changing_weight_scaling_factor():
+    factors = [1, 2, 3, 5, 10, 15]
+
+    orbitalDir = os.path.join("sampleInputs", "PM7_optimisedOrbitals")
+    test_file = "butyl_naphthalene_output.json"
+    #test_file = "anthracene_output.json"
+
+    fig=plt.figure()
+    for idx,factor in enumerate(factors):
+        homo = MolecularOrbital.fromJsonFile(
+            os.path.join(orbitalDir, test_file)
+            , mo_number=MolecularOrbital.HOMO
+            , molecule_name=reducefname(test_file).capitalize()
+            , weight_scaling_factor=factor
+        )
+
+        logfun(homo)
+        axis_number = int("23" + str(idx+1))
+        homo.plot(f"{homo.molecule_name}, weight_scaling_factor = {factor}", axis_number=axis_number, fig=fig)
+    
+    plt.show()
+
+def print_all_inertia_info():
+    """
+    For each file in files, print out the logfun (molname, homo num, centre of mass, principle moments)
+    """
+    from .python_modules.orbital_calculations import MolecularOrbital as MO
+    orbitalDir = os.path.join("sampleInputs", "PM7_optimisedOrbitals")
+    for f in os.listdir(orbitalDir):
+        filename = os.path.join(orbitalDir, f)
+        homo = MO.fromJsonFile(filename, MO.HOMO, molecule_name=reducefname(f).capitalize())
+        logfun(homo)
+        print("----------------------")
+
+#orbital_calculations()
+
+#changing_weight_scaling_factor()
+
+#print_sorted_orbital_pairs()
+#print_all_inertia_info()
+
+#plotting()
+
+db_main()

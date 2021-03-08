@@ -29,7 +29,7 @@ def tanimotoSimilarity(i_fp, j_fp):
     return DataStructs.FingerprintSimilarity(i_fp, j_fp, metric=DataStructs.TanimotoSimilarity)
 
 
-def chemicalDistance(i: np.array, j: np.array):
+def chemicalDistance(i: np.ndarray, j: np.ndarray):
     """
     https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.DistanceMetric.html
 

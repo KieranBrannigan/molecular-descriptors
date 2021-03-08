@@ -1,8 +1,11 @@
 import os
+import sqlite3
+from typing import Union
 
 from rdkit.Chem import Mol, SanitizeFlags, SanitizeMol, MolFromSmiles, RDKFingerprint
+from rdkit.Chem.AllChem import GetMorganFingerprint
 
-from rdkit.DataStructs.cDataStructs import BitVectToBinaryText, CreateFromBinaryText
+from rdkit.DataStructs.cDataStructs import BitVectToBinaryText, CreateFromBinaryText, ExplicitBitVect
 
 import numpy as np
 
@@ -24,12 +27,27 @@ def sanitize_without_hypervalencies(m: Mol):
         ,SanitizeFlags.SANITIZE_FINDRADICALS|SanitizeFlags.SANITIZE_KEKULIZE|SanitizeFlags.SANITIZE_SETAROMATICITY|SanitizeFlags.SANITIZE_SETCONJUGATION|SanitizeFlags.SANITIZE_SETHYBRIDIZATION|SanitizeFlags.SANITIZE_SYMMRINGS,catchErrors=True
         )
 
-def fingerprint_from_smiles(s):
+
+# Fingerprint constants
+class Consts:
+    MORGAN_FP = 1
+    RDK_FP = 2
+
+def fingerprint_from_smiles(s, fingerprint_type: int) -> ExplicitBitVect:
+    """
+    TODO: generalize to multiple fingerprints
+    for now Morgan and RDK (daylight) Fingerprint
+    """
+    funMap = {
+        Consts.MORGAN_FP: GetMorganFingerprint,
+        Consts.RDK_FP: RDKFingerprint
+    }
+
     m = MolFromSmiles(s, sanitize=False)
     sanitize_without_hypervalencies(m)
-    return RDKFingerprint(m)
+    return funMap[fingerprint_type](m)
 
-def density_scatter( x , y, ax = None, sort = True, bins = 20, cmap='jet', **kwargs )   :
+def density_scatter( x , y, ax = None, fig=None, sort = True, bins = 20, cmap='jet', **kwargs ):
     """
     Scatter plot colored by 2d histogram
 
@@ -67,3 +85,19 @@ def scale_array(X: np.ndarray, min_, max_)-> np.ndarray:
     X_std = (X - X.min(axis=0)) / (X.max(axis=0) - X.min(axis=0))
     X_scaled = X_std * (max_ - min_) + min_
     return X_scaled
+
+def atomic_units2eV(au: Union[int,float, np.ndarray]) -> Union[float, np.ndarray]:
+    hartree_in_eV = 27.21138624598853 # https://en.wikipedia.org/wiki/Hartree_atomic_units#Units
+    
+    return au * hartree_in_eV
+
+
+filenames2smiles = {
+    "naphthalene-butyl-anthracene": "C1=CC=CC2=C1C=C3C(=C2)C=CC(=C3)CCCCC4=CC5=C(C=C4)C=CC=C5"
+    , "naphthalene": "C1=CC=CC=C1"
+    , "diphenyl-butadiene":"C1=CC=CC=C1C=CC=CC2=CC=CC=C2"
+    , "diphenyl-hexatriene":"C1=CC=CC=C1C=CC=CC=CC2=CC=CC=C2"
+    , "diphenyl-octatetrene":"C1=CC=CC=C1C=CC=CC=CC=CC2=CC=CC=C2"
+    , "diphenyl-decapentene":"C1=CC=CC=C1C=CC=CC=CC=CC=CC2=CC=CC=C2"
+    , "diphenyl-dodecahexene":"C1=CC=CC=C1C=CC=CC=CC=CC=CC=CC2=CC=CC=C2"
+}

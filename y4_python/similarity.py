@@ -18,10 +18,10 @@ from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw 
 
-from python_modules.draw_molecule import SMILEStoFiles, concat_images
-from python_modules.database import DB
-from python_modules.regression import distance_from_regress
-from python_modules.util import density_scatter
+from .python_modules.draw_molecule import SMILEStoFiles, concat_images
+from .python_modules.database import DB
+from .python_modules.regression import distance_from_regress
+from .python_modules.util import density_scatter
 db = DB()
 
 geomsFile = "geoms.smi"
