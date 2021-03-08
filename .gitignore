@@ -2,3 +2,4 @@ __pycache__/
 /sampleInputs
 /.vscode/launch.json
 /output_mols
+/y4_python/molecule_database.db
