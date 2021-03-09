@@ -1,31 +1,13 @@
 from dataclasses import dataclass
 from functools import reduce
-from typing import Iterable, Iterator, List, Set, Tuple, Union
+from typing import Iterable, Iterator, List, Sequence, Set, Tuple, Union
 
-from .orbital_calculations import MolecularOrbital
+from .orbital_calculations import MolecularOrbital, SerializedMolecularOrbital
 
 import numpy as np  
 
 
-@dataclass
-class CalculatedMolecularOrbital:
-    """
-    Like python_modules.orbital_calculations.MolecularOrbital, however
-    it doesn't contain all of the methods for calculation, it simply 
-    holds all the values of a calculated Molecular Orbital.
-    Helper dataclass for functions in this script.
-    """
-
-    "TODO: Make a class for inertiaTensors to better describe them?"
-    inertiaTensor: np.ndarray
-    principleAxes: np.ndarray
-    principleMoments: np.ndarray
-    IPR: float
-    molecule_name: str = "N/A"
-
-
-
-def inertia_difference(moments1: Union[np.ndarray, Tuple[float, float, float]], moments2: Union[np.ndarray, Tuple[float, float, float]], ) -> float:
+def inertia_difference(moments1: Union[Sequence[float], Tuple[float, float, float]], moments2: Union[Sequence[float], Tuple[float, float, float]], ) -> float:
     """
     Calculate some difference between (calculated) two molecular orbitals
     based on their moment of inertia.
@@ -36,14 +18,14 @@ def inertia_difference(moments1: Union[np.ndarray, Tuple[float, float, float]], 
     )
 
 
-def IPR_difference(mo1: CalculatedMolecularOrbital, mo2: CalculatedMolecularOrbital):
+def IPR_difference(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital):
     """
     Calculate some difference between two (calculated) molecular orbitals
     based on there Inverse Participation Ratio.
     """
     return 0
 
-def percent_heteroatom_difference(mo1: CalculatedMolecularOrbital, mo2: CalculatedMolecularOrbital, atom_symbol: str):
+def percent_heteroatom_difference(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital, atom_symbol: str):
     """
     Calculate some difference between two (calculated) molecular orbitals
     based on there percent weight on specified heteroatom.
@@ -51,7 +33,7 @@ def percent_heteroatom_difference(mo1: CalculatedMolecularOrbital, mo2: Calculat
     return 0
 
 
-def orbital_distance(mo1: CalculatedMolecularOrbital, mo2: CalculatedMolecularOrbital, inertia_coeff:float=1., IPR_coeff:float=1, O_coeff:float=1, N_coeff:float=1):
+def orbital_distance(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital, inertia_coeff:float=1., IPR_coeff:float=1, O_coeff:float=1, N_coeff:float=1):
     """
     Compute the Distance between 2 (calculated) molecular orbitals.
 
@@ -64,7 +46,7 @@ def orbital_distance(mo1: CalculatedMolecularOrbital, mo2: CalculatedMolecularOr
 
     """
 
-    inertia_diff = inertia_difference(mo1.principleMoments, mo2.principleMoments)
+    inertia_diff = inertia_difference(mo1["principal_moments"], mo2["principal_moments"])
     IPR_diff = IPR_difference(mo1, mo2)
     O_diff = percent_heteroatom_difference(mo1, mo2, "O")
     N_diff = percent_heteroatom_difference(mo1, mo2, "N")
@@ -75,8 +57,8 @@ def orbital_distance(mo1: CalculatedMolecularOrbital, mo2: CalculatedMolecularOr
 
 
 def sort_molecular_orbital_pairs(
-    orbitals: Union[Iterable[CalculatedMolecularOrbital], Iterator[CalculatedMolecularOrbital]]
-    ) -> List[Tuple[CalculatedMolecularOrbital, CalculatedMolecularOrbital, float]]:
+    orbitals: Union[Iterable[SerializedMolecularOrbital], Iterator[SerializedMolecularOrbital]]
+    ) -> List[Tuple[SerializedMolecularOrbital, SerializedMolecularOrbital, float]]:
     """
     Given list of molecular orbitals, order them in pairs, from 
     most similar (least distant) to least similar (most distant).
