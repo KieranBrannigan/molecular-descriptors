@@ -2,12 +2,12 @@ import json
 import os
 import sqlite3
 import csv
-from typing import Iterable, List, Mapping, NamedTuple
+from typing import Iterable, List, Mapping, NamedTuple, Tuple
 
 import numpy as np
 from rdkit.DataStructs.cDataStructs import BitVectToText, CreateFromBitString, ExplicitBitVect
 
-from .util import Fingerprint, fingerprint_from_smiles, Consts
+from .util import fingerprint_from_smiles, Consts
 from .orbital_calculations import MolecularOrbital, SerializedMolecularOrbital
 
 # for idx, row in enumerate(blyp_data):
@@ -21,7 +21,7 @@ class DatasetItem(NamedTuple):
     E_pm7: float
     E_blyp: float
     smiles: str
-    fingerprint: Fingerprint
+    fingerprint: ExplicitBitVect
     serialized_molecular_orbital: str
 
 class DB:
@@ -182,8 +182,13 @@ class DB:
         r = self.cur.execute(
             "SELECT `rdk_fingerprint` FROM dataset ORDER BY `rowid`"
         )
-        return r.fetchall()
+        return [x[0] for x in r.fetchall()]
 
+    def get_molecular_orbitals(self) -> List[SerializedMolecularOrbital]:
+        r = self.cur.execute(
+            "SELECT `serialized_molecular_orbital` FROM dataset ORDER BY `rowid`"
+        )
+        return [x[0] for x in r.fetchall()] 
 
 def main():
 
