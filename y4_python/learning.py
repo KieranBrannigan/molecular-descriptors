@@ -1,7 +1,9 @@
-from typing import Callable
+from typing import Callable, List, Tuple
 import sqlite3
 import math
 from time import perf_counter
+
+from random import sample
 
 from sklearn import neighbors
 from sklearn.neighbors import DistanceMetric
@@ -16,10 +18,16 @@ from scipy.stats import pearsonr, linregress
 import numpy as np
 import pandas as pd
 from rdkit import Chem, DataStructs
+from typing_extensions import TypedDict
+
+from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 
 from .python_modules.database import DB
 from .python_modules.util import sanitize_without_hypervalencies
 from .python_modules.regression import distance_from_regress
+from .python_modules.orbital_calculations import SerializedMolecularOrbital
+from .python_modules.structural_similarity import structural_distance
+from .python_modules.orbital_similarity import orbital_distance
 
 def tanimotoSimilarity(i_fp, j_fp):
     """
@@ -28,8 +36,13 @@ def tanimotoSimilarity(i_fp, j_fp):
     """
     return DataStructs.FingerprintSimilarity(i_fp, j_fp, metric=DataStructs.TanimotoSimilarity)
 
+class MetricParams(TypedDict):
+    fingerprint_list: List[ExplicitBitVect]
+    molecular_orbital_list: List[SerializedMolecularOrbital]
+    c_inertia: float
+    c_struct: float
 
-def chemicalDistance(i: np.ndarray, j: np.ndarray):
+def chemicalDistance(i: np.ndarray, j: np.ndarray, fingerprint_list: List[ExplicitBitVect], molecular_orbital_list: List[SerializedMolecularOrbital], c_inertia=1.0, c_struct=1.0, ):
     """
     https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.DistanceMetric.html
 
@@ -45,16 +58,19 @@ def chemicalDistance(i: np.ndarray, j: np.ndarray):
     Symmetry: d(x, y) = d(y, x)
     Triangle Inequality: d(x, y) + d(y, z) >= d(x, z)
     
+
+    Our current combination for multiple distance functions is as follows:
+
+    D(i,j) = c_inertia * inertia_distance(i,j) + c_struct * structural_distance(i,j)
+
     """
-    global fingerprint_list
-    # i_smiles = i[1]
-    # j_smiles = j[1]
     i_fp= fingerprint_list[int(i[0])]
     j_fp = fingerprint_list[int(j[0])]
-    #print(f"i_smiles = {i_smiles} j_smiles = {j_smiles}")
 
-    T_ij = tanimotoSimilarity(i_fp, j_fp)
-    return 1 - T_ij
+    i_mo = molecular_orbital_list[int(i[0])]
+    j_mo = molecular_orbital_list[int(j[0])]
+
+    return c_inertia * orbital_distance(i_mo, j_mo) + c_struct * structural_distance(i_fp, j_fp)
 
 
 def plot(x, y, data_label, x_label, y_label, title=None,):
@@ -69,15 +85,16 @@ def plot(x, y, data_label, x_label, y_label, title=None,):
     #ax.set_title(title)
     plt.tight_layout()
 
-def knnLOO(n_neighbors, X, y):
+def knnLOO(n_neighbors, X, y, metric_params, weights='distance'):
     y_predicted = []
     y_real = []
 
-    knn = neighbors.KNeighborsRegressor(n_neighbors, weights='uniform', metric=chemicalDistance)
+    # n_jobs = -1, means use all CPUs
+    knn = neighbors.KNeighborsRegressor(n_neighbors, weights=weights, metric=chemicalDistance, metric_params=metric_params, n_jobs=-1) 
 
-    #kf = KFold(n_splits=2, shuffle=True)
+    kf = KFold(n_splits=2, shuffle=True)
 
-    for train_index, test_index in LeaveOneOut().split(X):
+    for train_index, test_index in kf.split(X):
         # Assign train/test values
         X_train,X_test=X[train_index],X[test_index]
         y_train,y_test=y[train_index],y[test_index]
@@ -119,35 +136,55 @@ def main_euclidean():
     for line in results:
         print(",".join(str(x) for x in line))
 
-def main_chemical_distance():
+def main_chemical_distance(k_neighbours, inertia_coefficients: List[float]=[0.0,1.0], structural_coefficients:List[float]=[0.0, 1.0]):
     """
     X = smiles_list
     y = deviation from regress line
 
-    """
+    """ 
 
     db = DB()
-    ### (mol_name, E_pm7, E_bly, SMILES, fingerprint)...
+    ### (mol_name, E_pm7, E_bly, SMILES, rdk_fingerprint, serialized_molecular_orbital)...
 
-    mol_list = db.get_mol_names()
+    mol_list = db.get_mol_ids()
     pm7_energies = db.get_pm7_energies()
     blyp_energies = db.get_blyp_energies()
     smiles_list = db.get_smiles()
     global fingerprint_list
     fingerprint_list = db.get_fingerprints()
-    slope, intercept, r_value, p_value, std_err = linregress(pm7_energies,blyp_energies)
+    molecular_orbital_list = db.get_molecular_orbitals()
+
     ### deviation_list = [[regression_error_value1, mol_name1],...]
     deviation_list = (list(map(distance_from_regress, pm7_energies, blyp_energies)))
 
     #BLYP_minus_PM7_list = [blyp_energies[idx] - pm7_energies[idx] for idx in range(len(blyp_energies))]
-    X = np.asarray([i for i in range(len(mol_list))]) # input data eg pm7 energies
-    y = np.asarray(deviation_list) # expected output eg regression deviation
+    X = np.asarray([i for i in range(len(mol_list))]) # input data - index for each row of the database IE each molecule
+    y = np.asarray(deviation_list) # expected output eg regression deviation 
 
-    results = [("k", "r", "rmse")]
+    ### Sampling for testing
+    cutoff = 1000
+    X = X[:cutoff]
+    y = y[:cutoff]
+    pm7_energies = pm7_energies[:cutoff]
+    blyp_energies = blyp_energies[:cutoff]
+
+    results: List[Tuple] = [("k", "c_inertia", "c_struct", "r", "rmse")]
     start = perf_counter()
-    for k in range(5,6):
-        y_real, y_predicted, r, rmse = knnLOO(n_neighbors=k, X=X, y=y)
-        results.append((k,r,rmse))
+
+    metric_params: MetricParams = {
+        "fingerprint_list": fingerprint_list
+        , "molecular_orbital_list": molecular_orbital_list
+        , "c_inertia": 1
+        , "c_struct": 1
+    }
+    
+    
+    for c_inertia in inertia_coefficients:
+        for c_struct in structural_coefficients:
+            metric_params["c_inertia"] = c_inertia
+            metric_params["c_struct"] = c_struct
+            y_real, y_predicted, r, rmse = knnLOO(n_neighbors=k_neighbours, X=X, y=y, metric_params=metric_params)
+            results.append((k_neighbours, c_inertia, c_struct, r, rmse))
     finish = perf_counter()
     plot(x=y_real, y=y_predicted, data_label="predicted vs real, k=5", x_label=r'$y_{real}$', y_label=r'$y_{pred}$')
     r, rmse = get_r_rmse(y_real, y_predicted)
@@ -166,6 +203,8 @@ def main_chemical_distance():
     for line in results:
         print(",".join(str(x) for x in line))
 
+def main():
+    main_chemical_distance(k_neighbours=5, inertia_coefficients=[.1,0.5], structural_coefficients=[1,2])
+
 if __name__ == "__main__":
-    fingerprint_list = []
-    main_chemical_distance()
+    main()

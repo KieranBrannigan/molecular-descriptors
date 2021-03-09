@@ -9,14 +9,16 @@ from .running_orbital_calculations import logfun, main as orbital_calculations_m
 
 from .python_modules.database import main as db_main, DB
 
+from .python_modules.orbital_similarity import sort_molecular_orbital_pairs
+from .python_modules.orbital_calculations import MolecularOrbital
+
+from .learning import main as learning_main
 
 def orbital_calculations():
     orbitalDir = os.path.join("sampleInputs", "PM7_optimisedOrbitals")
     orbital_calculations_main(orbitalDir)
 
 
-from .python_modules.orbital_similarity import CalculatedMolecularOrbital, sort_molecular_orbital_pairs
-from .python_modules.orbital_calculations import MolecularOrbital
 
 def print_sorted_orbital_pairs():
     """
@@ -144,4 +146,6 @@ def print_all_inertia_info():
 
 #plotting()
 
-db_main()
+# db_main()
+
+learning_main()
