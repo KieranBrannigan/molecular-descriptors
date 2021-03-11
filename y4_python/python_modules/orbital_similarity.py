@@ -15,7 +15,7 @@ def inertia_difference(moments1: Union[Sequence[float], Tuple[float, float, floa
 
     return sum(
         [(moments1[idx] - moments2[idx])**2 for idx in range(len(moments1))]
-    )
+    )**0.5
 
 
 def IPR_difference(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital):
