@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from typing import Union
+from typing import Union, overload
 
 from rdkit.Chem import Mol, SanitizeFlags, SanitizeMol, MolFromSmiles, RDKFingerprint
 from rdkit.Chem.AllChem import GetMorganFingerprint
@@ -86,10 +86,18 @@ def scale_array(X: np.ndarray, min_, max_)-> np.ndarray:
     X_scaled = X_std * (max_ - min_) + min_
     return X_scaled
 
-def atomic_units2eV(au: Union[int,float, np.ndarray]) -> Union[float, np.ndarray]:
-    hartree_in_eV = 27.21138624598853 # https://en.wikipedia.org/wiki/Hartree_atomic_units#Units
-    
-    return au * hartree_in_eV
+
+HARTREE_IN_EV = 27.21138624598853 # https://en.wikipedia.org/wiki/Hartree_atomic_units#Units
+@overload
+def atomic_units2eV(au: Union[int, float]) -> float:...
+
+@overload
+def atomic_units2eV(au: np.ndarray) -> np.ndarray:...
+
+def atomic_units2eV(au: Union[int, float, np.ndarray]) -> Union[float, np.ndarray]:
+    return au * HARTREE_IN_EV
+
+
 
 
 filenames2smiles = {
