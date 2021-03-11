@@ -234,8 +234,8 @@ def main():
             ).serialize()
         
 
-            db.add_row(
-                DatasetItem(blyp_mol_id, float(E_pm7), float(E_blyp), smiles, rdk_fingerprint, serialized_molecular_orbital)
+            db.add_dataset_row(
+                DatasetItem(blyp_mol_id, atomic_units2eV(float(E_pm7)), atomic_units2eV(float(E_blyp)), smiles, rdk_fingerprint, serialized_molecular_orbital) # type: ignore
             )
             print(idx)
         db.commit()
