@@ -22,19 +22,16 @@ from typing_extensions import TypedDict
 
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 
-from .python_modules.database import DB
 from .python_modules.util import sanitize_without_hypervalencies
 from .python_modules.regression import distance_from_regress
 from .python_modules.orbital_calculations import SerializedMolecularOrbital
 from .python_modules.structural_similarity import structural_distance
 from .python_modules.orbital_similarity import orbital_distance
+from .python_modules.chemical_distance_metric import chemical_distance, MetricParams
+from .python_modules.database import DB
 
-def tanimotoSimilarity(i_fp, j_fp):
-    """
-    Input i_fp, j_fp  Fingerprints for i and j
-    Return the tanimoto similarity between two molecules i and j
-    """
-    return DataStructs.FingerprintSimilarity(i_fp, j_fp, metric=DataStructs.TanimotoSimilarity)
+def pre_calculated(i, j, calculated_pairs: dict):
+    ""
 
 def plot(x, y, data_label, x_label, y_label, title=None,):
     if title == None:
@@ -53,9 +50,9 @@ def knnLOO(n_neighbors, X, y, metric_params, weights='distance'):
     y_real = []
 
     # n_jobs = -1, means use all CPUs
-    knn = neighbors.KNeighborsRegressor(n_neighbors, weights=weights, metric=chemicalDistance, metric_params=metric_params, n_jobs=-1) 
+    knn = neighbors.KNeighborsRegressor(n_neighbors, weights=weights, metric=chemical_distance, metric_params=metric_params, n_jobs=-1) 
 
-    kf = KFold(n_splits=2, shuffle=True)
+    kf = KFold(n_splits=10, shuffle=True)
 
     for train_index, test_index in kf.split(X):
         # Assign train/test values
@@ -99,7 +96,7 @@ def main_euclidean():
     for line in results:
         print(",".join(str(x) for x in line))
 
-def main_chemical_distance(k_neighbours, inertia_coefficients: List[float]=[0.0,1.0], structural_coefficients:List[float]=[0.0, 1.0]):
+def main_chemical_distance(k_neighbours, orbital_coefficients: List[float]=[0.0,1.0], structural_coefficients:List[float]=[0.0, 1.0]):
     """
     X = smiles_list
     y = deviation from regress line
@@ -125,49 +122,53 @@ def main_chemical_distance(k_neighbours, inertia_coefficients: List[float]=[0.0,
     y = np.asarray(deviation_list) # expected output eg regression deviation 
 
     ### Sampling for testing
-    cutoff = 1000
+    cutoff = None
     X = X[:cutoff]
     y = y[:cutoff]
     pm7_energies = pm7_energies[:cutoff]
     blyp_energies = blyp_energies[:cutoff]
 
-    results: List[Tuple] = [("k", "c_inertia", "c_struct", "r", "rmse")]
+    results: List[Tuple] = [("k", "c_orbital", "c_struct", "r", "rmse")]
     start = perf_counter()
 
     metric_params: MetricParams = {
         "fingerprint_list": fingerprint_list
         , "molecular_orbital_list": molecular_orbital_list
-        , "c_inertia": 1
-        , "c_struct": 1
+        , "c_orbital":1.0
+        , "c_struct":1.0
+        , "inertia_coefficient":1.0
+        , "IPR_coefficient":1.0
+        , "N_coefficient":1.0
+        , "O_coefficient":1.0
     }
     
     
-    for c_inertia in inertia_coefficients:
+    for c_orbital in orbital_coefficients:
         for c_struct in structural_coefficients:
-            metric_params["c_inertia"] = c_inertia
+            metric_params["c_orbital"] = c_orbital
             metric_params["c_struct"] = c_struct
             y_real, y_predicted, r, rmse = knnLOO(n_neighbors=k_neighbours, X=X, y=y, metric_params=metric_params)
-            results.append((k_neighbours, c_inertia, c_struct, r, rmse))
+            results.append((k_neighbours, c_orbital, c_struct, r, rmse))
     finish = perf_counter()
-    plot(x=y_real, y=y_predicted, data_label="predicted vs real, k=5", x_label=r'$y_{real}$', y_label=r'$y_{pred}$')
-    r, rmse = get_r_rmse(y_real, y_predicted)
-    print(f"r={r} rmse={rmse}")
-    plt.show()
-    plot(x=pm7_energies, y=blyp_energies, data_label="pm7 vs blyp", x_label="PM7 Energy (AU)", y_label="BLYP Energy (AU)")
-    r, rmse = get_r_rmse(pm7_energies, blyp_energies)
-    print(f"r={r} rmse={rmse}")
-    plt.show()
-    blyp_predicted = [pm7_energies[idx] + y_predicted[idx] for idx in range(len(pm7_energies))]
-    plot(x=blyp_energies, y=blyp_predicted, data_label="predicted blyp vs blyp", x_label="BLYP Energy (AU)", y_label="Predicted BLYP Energy (PM7 Energy + Correction) ")
-    r, rmse = get_r_rmse(blyp_energies, blyp_predicted)
-    print(f"r={r} rmse={rmse}")
-    plt.show()
+    # plot(x=y_real, y=y_predicted, data_label="predicted vs real, k=5", x_label=r'$y_{real}$', y_label=r'$y_{pred}$')
+    # r, rmse = get_r_rmse(y_real, y_predicted)
+    # print(f"r={r} rmse={rmse}")
+    # plt.show()
+    # plot(x=pm7_energies, y=blyp_energies, data_label="pm7 vs blyp", x_label="PM7 Energy (AU)", y_label="BLYP Energy (AU)")
+    # r, rmse = get_r_rmse(pm7_energies, blyp_energies)
+    # print(f"r={r} rmse={rmse}")
+    # plt.show()
+    # blyp_predicted = [pm7_energies[idx] + y_predicted[idx] for idx in range(len(pm7_energies))]
+    # plot(x=blyp_energies, y=blyp_predicted, data_label="predicted blyp vs blyp", x_label="BLYP Energy (AU)", y_label="Predicted BLYP Energy (PM7 Energy + Correction) ")
+    # r, rmse = get_r_rmse(blyp_energies, blyp_predicted)
+    # print(f"r={r} rmse={rmse}")
+    # plt.show()
     print(f"time taken to train = {round(finish - start, ndigits=5)}")
     for line in results:
         print(",".join(str(x) for x in line))
 
 def main():
-    main_chemical_distance(k_neighbours=5, inertia_coefficients=[.1,0.5], structural_coefficients=[1,2])
+    main_chemical_distance(k_neighbours=5, orbital_coefficients=[0,0.5], structural_coefficients=[0,1])
 
 if __name__ == "__main__":
     main()
