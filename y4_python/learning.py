@@ -2,11 +2,15 @@ from typing import Callable, List, Tuple
 import sqlite3
 import math
 from time import perf_counter
+from dataclasses import dataclass
+import os
+import csv
+from datetime import date, datetime
+
 
 from random import sample
 
 from sklearn import neighbors
-from sklearn.neighbors import DistanceMetric
 from sklearn.model_selection import LeaveOneOut, KFold
 from sklearn.metrics import mean_squared_error
 
@@ -22,7 +26,7 @@ from typing_extensions import TypedDict
 
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 
-from .python_modules.util import sanitize_without_hypervalencies
+from .python_modules.util import sanitize_without_hypervalencies, create_dir_if_not_exists
 from .python_modules.regression import distance_from_regress
 from .python_modules.orbital_calculations import SerializedMolecularOrbital
 from .python_modules.structural_similarity import structural_distance
@@ -45,14 +49,14 @@ def plot(x, y, data_label, x_label, y_label, title=None,):
     #ax.set_title(title)
     plt.tight_layout()
 
-def knnLOO(n_neighbors, X, y, metric_params, weights='distance'):
+def knn(k_neighbors, k_folds, X, y, metric_params, weights='distance'):
     y_predicted = []
     y_real = []
 
     # n_jobs = -1, means use all CPUs
-    knn = neighbors.KNeighborsRegressor(n_neighbors, weights=weights, metric=chemical_distance, metric_params=metric_params, n_jobs=-1) 
+    knn = neighbors.KNeighborsRegressor(k_neighbors, weights=weights, metric=chemical_distance, metric_params=metric_params, n_jobs=-1) 
 
-    kf = KFold(n_splits=10, shuffle=True)
+    kf = KFold(n_splits=k_folds, shuffle=True)
 
     for train_index, test_index in kf.split(X):
         # Assign train/test values
@@ -91,12 +95,12 @@ def main_euclidean():
 
     results = [("k", "r", "rmse")]
     for k in range(1,31):
-        results.append((k,) + knnLOO(n_neighbors=k, X=X, y=y))
+        results.append((k,) + knn(k_neighbors=k, X=X, y=y))
 
     for line in results:
         print(",".join(str(x) for x in line))
 
-def main_chemical_distance(k_neighbours, orbital_coefficients: List[float]=[0.0,1.0], structural_coefficients:List[float]=[0.0, 1.0]):
+def main_chemical_distance(k_neighbours, k_folds, orbital_coefficients: List[float]=[0.0,1.0], structural_coefficients:List[float]=[0.0, 1.0], weights='distance'):
     """
     X = smiles_list
     y = deviation from regress line
@@ -128,8 +132,6 @@ def main_chemical_distance(k_neighbours, orbital_coefficients: List[float]=[0.0,
     pm7_energies = pm7_energies[:cutoff]
     blyp_energies = blyp_energies[:cutoff]
 
-    results: List[Tuple] = [("k", "c_orbital", "c_struct", "r", "rmse")]
-    start = perf_counter()
 
     metric_params: MetricParams = {
         "fingerprint_list": fingerprint_list
@@ -143,13 +145,19 @@ def main_chemical_distance(k_neighbours, orbital_coefficients: List[float]=[0.0,
     }
     
     
+    results: List[Tuple] = [("k_neighbors", "c_orbital", "c_struct", "r", "rmse")]
+    verbose_results = []
+    training_start_time = datetime.today()
+    start = perf_counter()
     for c_orbital in orbital_coefficients:
         for c_struct in structural_coefficients:
             metric_params["c_orbital"] = c_orbital
             metric_params["c_struct"] = c_struct
-            y_real, y_predicted, r, rmse = knnLOO(n_neighbors=k_neighbours, X=X, y=y, metric_params=metric_params)
+            y_real, y_predicted, r, rmse = knn(k_neighbors=k_neighbours, k_folds=k_folds, X=X, y=y, metric_params=metric_params, weights=weights)
+            verbose_results.append((y_real, y_predicted, r, rmse, k_neighbours, k_folds, metric_params, training_start_time))
             results.append((k_neighbours, c_orbital, c_struct, r, rmse))
     finish = perf_counter()
+    for row in verbose_results: save_results(*row)
     # plot(x=y_real, y=y_predicted, data_label="predicted vs real, k=5", x_label=r'$y_{real}$', y_label=r'$y_{pred}$')
     # r, rmse = get_r_rmse(y_real, y_predicted)
     # print(f"r={r} rmse={rmse}")
@@ -167,8 +175,42 @@ def main_chemical_distance(k_neighbours, orbital_coefficients: List[float]=[0.0,
     for line in results:
         print(",".join(str(x) for x in line))
 
+def save_results(y_real:np.ndarray, y_predicted:np.ndarray, r, rmse, k_neighbors:int, k_folds:int, params:MetricParams, training_start_time: date):
+    """
+    Export y_real,y_predicted in csv format.
+    FileName will be the start time of the training.
+    We will also output a info file, listing the parameters.
+    """
+
+    out_folder = str(date.today())
+    filename = training_start_time.strftime("%H-%M-%S")
+    fpath = os.path.join("Results", out_folder, filename)
+    create_dir_if_not_exists(os.path.dirname(fpath))
+
+    ### Don't forget to add extension
+    with open(fpath + "-info.txt", "w") as InfoFile:
+        InfoFile.write(f"r={r}\nrmse={rmse}")
+        InfoFile.writelines([f"{key}={val}" for key,val in params.items()])
+        # infolines = []
+        # for key,val in params.items():
+        #     if "line" in key:
+        #         continue
+        #     else:
+        #         infolines.append(
+        #             f"{key}={val}"
+        #         )
+    
+    with open(fpath + ".csv", "w") as CsvFile:
+        writer = csv.writer(CsvFile)
+        writer.writerows(np.array((y_real, y_predicted)).T)
+
+
+def show_results(results_file):
+    "plot the results from a given file."
+
 def main():
-    main_chemical_distance(k_neighbours=5, orbital_coefficients=[0,0.5], structural_coefficients=[0,1])
+    main_chemical_distance(k_neighbours=5, k_folds=10, orbital_coefficients=[0,0.5], structural_coefficients=[0,1])
+    main_chemical_distance(k_neighbours=5, k_folds=10, orbital_coefficients=[0,0.5], structural_coefficients=[0,1], weights='uniform')
 
 if __name__ == "__main__":
     main()
