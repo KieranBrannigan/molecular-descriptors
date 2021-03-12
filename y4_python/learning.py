@@ -36,43 +36,6 @@ def tanimotoSimilarity(i_fp, j_fp):
     """
     return DataStructs.FingerprintSimilarity(i_fp, j_fp, metric=DataStructs.TanimotoSimilarity)
 
-class MetricParams(TypedDict):
-    fingerprint_list: List[ExplicitBitVect]
-    molecular_orbital_list: List[SerializedMolecularOrbital]
-    c_inertia: float
-    c_struct: float
-
-def chemicalDistance(i: np.ndarray, j: np.ndarray, fingerprint_list: List[ExplicitBitVect], molecular_orbital_list: List[SerializedMolecularOrbital], c_inertia=1.0, c_struct=1.0, ):
-    """
-    https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.DistanceMetric.html
-
-    A function which takes two one-dimensional numpy arrays, and returns a distance. 
-    
-    Returns Distance between molecule i and j (D_ij) such that:
-    D_ij = 1 - T(i,j)  where T(i,j) is the tanimoto similarity between molecule i and j.
-
-    Note that in order to be used within the BallTree, the distance must be a true metric. 
-    i.e. it must satisfy the following properties:
-    Non-negativity: d(x, y) >= 0
-    Identity: d(x, y) = 0 if and only if x == y
-    Symmetry: d(x, y) = d(y, x)
-    Triangle Inequality: d(x, y) + d(y, z) >= d(x, z)
-    
-
-    Our current combination for multiple distance functions is as follows:
-
-    D(i,j) = c_inertia * inertia_distance(i,j) + c_struct * structural_distance(i,j)
-
-    """
-    i_fp= fingerprint_list[int(i[0])]
-    j_fp = fingerprint_list[int(j[0])]
-
-    i_mo = molecular_orbital_list[int(i[0])]
-    j_mo = molecular_orbital_list[int(j[0])]
-
-    return c_inertia * orbital_distance(i_mo, j_mo) + c_struct * structural_distance(i_fp, j_fp)
-
-
 def plot(x, y, data_label, x_label, y_label, title=None,):
     if title == None:
         title = "k-NN With Chemical Distance Metric"
