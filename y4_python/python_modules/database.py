@@ -192,12 +192,14 @@ class DB:
         )
         return [x[0] for x in r.fetchall()] 
 
-def main():
-
-    inputDir = os.path.join("..","sampleInputs")
+def main(database_path, orbitalsDir, BLYP_energies_file, PM7_energies_file, SMILES_file):
+    """
+    Example parameters:
     orbitalsDir = "D:\\Projects\\y4-project\\sampleInputs\\11k_orbitals"
     BLYP_file = "D:\\Projects\\y4-project\\sampleInputs\\11k_BLYP_homo_energies.csv"
     PM7_file = "D:\\Projects\\y4-project\\sampleInputs\\11k_PM7_homo_energies.csv"
+    SMILES_file = "D:\\Projects\\y4-project\\sampleInputs\\SMILES_labels.csv"
+    """
 
     ### Read the smiles representations of each molecule into a dictionary.
     ### This gives us O(1) lookup time, and ~1000 entries shouldn't be too memory demanding. (TODO: what about 100,000? :O )
@@ -211,12 +213,12 @@ def main():
             SMILES_dict[row[1].strip()] = row[0].strip()
 
 
-    db = DB()
+    db = DB(database_path)
 
-    db.create_table()
+    db.create_dataset_table()
 
 
-    with open(BLYP_file, 'r', newline='') as BLYP_File, open(PM7_file, 'r', newline='') as PM7_File:
+    with open(BLYP_energies_file, 'r', newline='') as BLYP_File, open(PM7_energies_file, 'r', newline='') as PM7_File:
         ### data is [[molName, E_blyp], ...]
         blyp_reader = csv.reader(BLYP_File)
         pm7_reader = csv.reader(PM7_File)
