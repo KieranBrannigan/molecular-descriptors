@@ -29,8 +29,10 @@ class DB:
     BLYP = 'E_blyp'
     PM7 = 'E_pm7'
 
-    def __init__(self):
-        self.conn = sqlite3.connect("D:\\Projects\\y4-project\\y4_python\\molecule_database.db", detect_types=sqlite3.PARSE_DECLTYPES)
+    COMPUTED_PAIRS_TABLE_NAME = "computed_pairs_{table_id}"
+
+    def __init__(self, database_path: str):
+        self.conn = sqlite3.connect(database_path, detect_types=sqlite3.PARSE_DECLTYPES)
         self.cur = self.conn.cursor()
         self.register_adapters()
         self.register_converters()
@@ -235,7 +237,7 @@ def main():
         
 
             db.add_dataset_row(
-                DatasetItem(blyp_mol_id, atomic_units2eV(float(E_pm7)), atomic_units2eV(float(E_blyp)), smiles, rdk_fingerprint, serialized_molecular_orbital) # type: ignore
+                DatasetItem(blyp_mol_id, atomic_units2eV(float(E_pm7)), atomic_units2eV(float(E_blyp)), smiles, rdk_fingerprint, serialized_molecular_orbital)
             )
             print(idx)
         db.commit()
@@ -244,4 +246,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    ### Pass the database and input files as arguments
+    # database_path, orbitalsDir, BLYP_energies_file, PM7_energies_file, SMILES_file = sys.argv[1:]
+    main(*sys.argv[1:])
