@@ -13,9 +13,9 @@ from rdkit import Chem
 
 from PIL.Image import Image
 
-from .python_modules.draw_molecule import PILFromSmiles, SMILEStoFiles, concat_images
+from .python_modules.draw_molecule import PILFromSmiles, SMILEStoFiles, concat_images, resize_image
 from .python_modules.database import DB
-from .python_modules.util import atomic_units2eV, density_scatter
+from .python_modules.util import density_scatter
 
 def main():
     SIG_FIGS = 4
@@ -23,43 +23,16 @@ def main():
 
     ### Read the PM7 and BLYP35 Energy values into memory
     ### Also read in the molecule names.
-    PM7File = os.path.join( "sampleInputs", "PM7_energies.txt")
-    BLYPFile = os.path.join( "sampleInputs","BLYP35_energies.txt")
-
-    with open(BLYPFile, 'r', newline='') as F:
-        reader = csv.reader(F)
-        blyp_data = np.asarray(list(reader)).T
-
-    labels = set(blyp_data[0])
-    blyp_energies = blyp_data[1].astype(np.float)
-
-    # as of currently (17/10/2020) the PM7 dataset contains some extras. So we'll filter them out
-    with open(PM7File, 'r', newline='') as F:
-        reader = csv.reader(F)
-        filtered = [x for x in reader if x[0] in labels]
-        pm7_data = np.asarray(list(filtered)).T
-
-
-    pm7_energies = pm7_data[1].astype(np.float)
     pm7_energies = db.get_pm7_energies()
 
     blyp_energies = db.get_blyp_energies()
-    labels = db.get_mol_names()
-
-    ### Read the smiles representations of each molecule into a dictionary.
-    ### This gives us O(1) lookup time, and ~1000 entries shouldn't be too memory demanding.
-    SMILES_file = "y4_python/python_modules/geoms.smi"
-    SMILES_dict = {}
-    with open(SMILES_file, 'r') as F:
-        reader = csv.reader(F, dialect='excel-tab')
-        for row in reader:
-            SMILES_dict[row[1]] = row[0]
-
+    labels = db.get_mol_ids()
+    smiles = db.get_smiles()
 
     def mOnPick(event):
         idx = event.ind[0]
         # # find index of this x value in our x values (CHECK currently blyp)
-        mol_name = pm7_data[0][idx]
+        mol_name = labels[idx]
         diff = x[idx] - y[idx]
         info = f"""{mol_name}, {x[idx]}, {y[idx]}
     BLYP35-PM7={np.format_float_scientific(diff, precision=SIG_FIGS)}
@@ -80,14 +53,15 @@ def main():
     fig, ax = plt.subplots()
     x = pm7_energies
     y = blyp_energies
-    x = atomic_units2eV(np.array(x)) # convert from Hartrees to eV
-    y = atomic_units2eV(np.array(y)) # ^^
+    x = np.array(x)
+    y = np.array(y) 
     slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
     ### regErrors = [[regression_error_value1, mol_name1],...]
     regErrors = (list(map(
         lambda idx: (
             (slope*x[idx] + intercept) - y[idx]
-            , pm7_data[0][idx]
+            , labels[idx]
+            , smiles[idx]
         )
         , range(len(y))
     )))
@@ -107,8 +81,8 @@ def main():
     #     (regressionLine,), ('regression line')
     #     )
 
-    ax.set_xlabel(r'$E_{PM7}$' +" (AU)")
-    ax.set_ylabel(r'$E_{BLYP}$' +" (AU)")
+    ax.set_xlabel(r'$E_{PM7}$' +" (eV)")
+    ax.set_ylabel(r'$E_{BLYP}$' +" (eV)")
     # ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
     # ax.xaxis.set_major_formatter(FormatStrFormatter('%.3f'))
     title_base = "BLYP35 vs PM7. Click point to print info."
@@ -144,24 +118,29 @@ def main():
     mostNegativeDeviation = sortedRegErrors[:9]
 
     images: List[Image] = SMILEStoFiles(
-        [SMILES_dict[x[1]] for x in mostNegativeDeviation]
+        [x[2] for x in mostNegativeDeviation]
         , labels=[
-            f"{x[1]}\ndE = {np.round_(x[0],decimals=4)}" for x in mostNegativeDeviation
+            f"{x[1]}\nΔE = {np.round_(x[0],decimals=4)}" for x in mostNegativeDeviation
             ]
         )
     outFile = os.path.join( "output_mols", "most_negative_deviations.png")
     grid_img = concat_images(images)
+    grid_img = resize_image(grid_img, 800)
     grid_img.save(outFile)
 
     ### TODO: Output most positive deviation molecules
     mostPositiveDeviation = sortedRegErrors[-9:]
 
     images: List[Image] = SMILEStoFiles(
-        [SMILES_dict[x[1]] for x in mostPositiveDeviation]
+        [x[2] for x in mostPositiveDeviation]
         , labels=[
-            f"{x[1]}\ndE = {np.round_(x[0],decimals=4)}" for x in mostPositiveDeviation]
+            f"{x[1]}\nΔE = {np.round_(x[0],decimals=4)}" for x in mostPositiveDeviation]
         ,
         )
     outFile = os.path.join( "output_mols", "most_positive_deviations.png")
     grid_img = concat_images(images)
+    grid_img = resize_image(grid_img, 800)
     grid_img.save(outFile)
+
+if __name__ == "__main__":
+    main()
