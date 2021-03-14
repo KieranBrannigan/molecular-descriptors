@@ -3,3 +3,5 @@ __pycache__/
 /.vscode/launch.json
 /output_mols
 /y4_python/molecule_database.db
+/results
+/y4_python/*.db
