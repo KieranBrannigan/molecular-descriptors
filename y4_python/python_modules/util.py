@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 def create_dir_if_not_exists(path: str):
     if not os.path.isdir(path):
-        os.mkdir(path)
+        os.makedirs(path)
     else:
         return
 
