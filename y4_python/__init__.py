@@ -1,5 +1,7 @@
 import os
 from pprint import pprint
+from typing import Mapping, NamedTuple, Union
+from itertools import combinations
 
 from matplotlib import pyplot as plt
 
@@ -9,7 +11,8 @@ from .running_orbital_calculations import logfun, main as orbital_calculations_m
 
 from .python_modules.database import main as db_main, DB
 
-from .python_modules.orbital_similarity import sort_molecular_orbital_pairs
+from .python_modules.orbital_similarity import sort_molecular_orbital_pairs, orbital_distance
+from .python_modules.structural_similarity import structural_distance
 from .python_modules.orbital_calculations import MolecularOrbital
 
 from .learning import main as learning_main
@@ -137,6 +140,7 @@ def print_all_inertia_info():
         logfun(homo)
         print("----------------------")
 
+
 #orbital_calculations()
 
 #changing_weight_scaling_factor()
@@ -147,5 +151,7 @@ def print_all_inertia_info():
 #plotting()
 
 # db_main()
-
-learning_main()
+if __name__ == "__main__":
+    ""
+    #db_main()
+    #learning_main()
