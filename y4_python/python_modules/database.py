@@ -7,7 +7,7 @@ from typing import Iterable, List, Mapping, NamedTuple, Tuple
 import numpy as np
 from rdkit.DataStructs.cDataStructs import BitVectToText, CreateFromBitString, ExplicitBitVect
 
-from .util import fingerprint_from_smiles, Consts
+from .util import fingerprint_from_smiles, Consts, atomic_units2eV
 from .orbital_calculations import MolecularOrbital, SerializedMolecularOrbital
 
 # for idx, row in enumerate(blyp_data):
@@ -44,7 +44,7 @@ class DB:
         else:
             return False
 
-    def create_table(self):
+    def create_dataset_table(self):
         """
         mol_id is the ZINC id eg: `ZINC000000038842`
         E_pm7, E_blyp are energies from each calculation eg -0.31885
@@ -96,10 +96,10 @@ class DB:
 
     def add_dataset(self, dataset: Iterable[DatasetItem]):
         for mol_id, pm7, blyp, smiles, fingerprint_bitvect, serialized_molecular_orbital in dataset:
-            self.add_row(DatasetItem(mol_id, pm7, blyp, smiles, fingerprint_bitvect, serialized_molecular_orbital))
+            self.add_dataset_row(DatasetItem(mol_id, pm7, blyp, smiles, fingerprint_bitvect, serialized_molecular_orbital))
         self.commit()
         
-    def add_row(self, row: DatasetItem):
+    def add_dataset_row(self, row: DatasetItem):
         mol_id, pm7, blyp, smiles, fingerprint_bitvect, serialized_molecular_orbital = row
         self.cur.execute(
                 "INSERT INTO dataset VALUES (?,?,?,?,?,?)", (mol_id, float(pm7), float(blyp), smiles, fingerprint_bitvect, serialized_molecular_orbital)
@@ -192,16 +192,17 @@ class DB:
         )
         return [x[0] for x in r.fetchall()] 
 
-def main():
-
-    inputDir = os.path.join("..","sampleInputs")
+def main(database_path, orbitalsDir, BLYP_energies_file, PM7_energies_file, SMILES_file):
+    """
+    Example parameters:
     orbitalsDir = "D:\\Projects\\y4-project\\sampleInputs\\11k_orbitals"
     BLYP_file = "D:\\Projects\\y4-project\\sampleInputs\\11k_BLYP_homo_energies.csv"
     PM7_file = "D:\\Projects\\y4-project\\sampleInputs\\11k_PM7_homo_energies.csv"
+    SMILES_file = "D:\\Projects\\y4-project\\sampleInputs\\SMILES_labels.csv"
+    """
 
     ### Read the smiles representations of each molecule into a dictionary.
     ### This gives us O(1) lookup time, and ~1000 entries shouldn't be too memory demanding. (TODO: what about 100,000? :O )
-    SMILES_file = "D:\\Projects\\y4-project\\sampleInputs\\SMILES_labels.csv"
     SMILES_dict: Mapping[str,str] = {}
     with open(SMILES_file, 'r') as F:
 
@@ -211,12 +212,12 @@ def main():
             SMILES_dict[row[1].strip()] = row[0].strip()
 
 
-    db = DB()
+    db = DB(database_path)
 
-    db.create_table()
+    db.create_dataset_table()
 
 
-    with open(BLYP_file, 'r', newline='') as BLYP_File, open(PM7_file, 'r', newline='') as PM7_File:
+    with open(BLYP_energies_file, 'r', newline='') as BLYP_File, open(PM7_energies_file, 'r', newline='') as PM7_File:
         ### data is [[molName, E_blyp], ...]
         blyp_reader = csv.reader(BLYP_File)
         pm7_reader = csv.reader(PM7_File)
