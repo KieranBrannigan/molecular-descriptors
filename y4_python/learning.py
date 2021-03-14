@@ -190,7 +190,7 @@ def save_results(y_real:np.ndarray, y_predicted:np.ndarray, r, rmse, k_neighbors
     ### Don't forget to add extension
     with open(fpath + "-info.txt", "w") as InfoFile:
         InfoFile.write(f"r={r}\nrmse={rmse}")
-        InfoFile.writelines([f"{key}={val}" for key,val in params.items()])
+        InfoFile.writelines([f"{key}={val}" for key,val in params.items() if "list" not in key])
         # infolines = []
         # for key,val in params.items():
         #     if "line" in key:
@@ -200,7 +200,7 @@ def save_results(y_real:np.ndarray, y_predicted:np.ndarray, r, rmse, k_neighbors
         #             f"{key}={val}"
         #         )
     
-    with open(fpath + ".csv", "w") as CsvFile:
+    with open(fpath + ".csv", "w", newline='') as CsvFile:
         writer = csv.writer(CsvFile)
         writer.writerows(np.array((y_real, y_predicted)).T)
 
@@ -209,8 +209,8 @@ def show_results(results_file):
     "plot the results from a given file."
 
 def main():
-    main_chemical_distance(k_neighbours=5, k_folds=10, orbital_coefficients=[0,0.5], structural_coefficients=[0,1])
-    main_chemical_distance(k_neighbours=5, k_folds=10, orbital_coefficients=[0,0.5], structural_coefficients=[0,1], weights='uniform')
+    main_chemical_distance(k_neighbours=5, k_folds=10, orbital_coefficients=[0.5], structural_coefficients=[1])
+    main_chemical_distance(k_neighbours=5, k_folds=10, orbital_coefficients=[0.5], structural_coefficients=[1], weights='uniform')
 
 if __name__ == "__main__":
     main()
