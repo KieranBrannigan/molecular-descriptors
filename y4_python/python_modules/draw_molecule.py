@@ -30,7 +30,7 @@ def add_label_to_image(img: Image.Image, text:str, fontsize:int=24, pos=(0.25, 0
         , color
         , font=mediumFont)
 
-def MolsToFiles(molList: Iterable[Mol], size=(400,400), labels: Iterable[str]=None) -> List[Image.Image]:
+def MolsToFiles(molList: Iterable[Mol], size=(400,400), labels: List[str]=None) -> List[Image.Image]:
     out = []
     for idx,m in enumerate(molList):
         if m is None:
@@ -70,3 +70,10 @@ def concat_images(images: List[Image.Image], num_cols=3):
         start=end
 
     return dst
+
+def resize_image(image: Image.Image, new_width) -> Image.Image:
+    "Resize image maintaining aspect ratio."
+    wpercent = (new_width/float(image.size[0]))
+    hsize = int((float(image.size[1])*float(wpercent)))
+    new_image = image.resize((new_width,hsize), Image.ANTIALIAS)
+    return new_image
