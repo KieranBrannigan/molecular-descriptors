@@ -12,9 +12,10 @@ def inertia_difference(moments1: Union[Sequence[float], Tuple[float, float, floa
     Calculate some difference between (calculated) two molecular orbitals
     based on their moment of inertia.
     """
-
+    m1 = sorted(moments1)
+    m2 = sorted(moments2)
     return sum(
-        [(moments1[idx] - moments2[idx])**2 for idx in range(len(moments1))]
+        [(m1[idx] - m2[idx])**2 for idx in range(len(moments1))]
     )**0.5
 
 
