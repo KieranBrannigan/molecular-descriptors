@@ -71,11 +71,16 @@ class SerializedMolecularOrbital(TypedDict):
     """
     Holds some key information for molecular orbitals.
 
-    Created using MolecularOrbital.serialize()
+    Created using MolecularOrbital.toDict()
     """
+    molecule_name: str
     centre_of_mass: Sequence[float]
     principal_moments: Sequence[float]
     principal_axes: Sequence[Sequence[float]]
+    percent_on_N: float
+    percent_on_O: float
+    percent_on_S: float
+    percent_on_P: float
 
 class MolecularOrbital:
     HOMO: int = -1
@@ -89,6 +94,10 @@ class MolecularOrbital:
         self._inertia_tensor: Optional[np.ndarray] = None
         self._principal_axes: Optional[np.ndarray] = None
         self._principal_moments: Optional[np.ndarray] = None
+        self._percent_on_N: Optional[float] = None
+        self._percent_on_O: Optional[float] = None
+        self._percent_on_S: Optional[float] = None
+        self._percent_on_P: Optional[float] = None
         self.molecule_name = molecule_name
         self.mo_number = mo_number
 
@@ -124,6 +133,30 @@ class MolecularOrbital:
         if self._principal_moments is None:
             self.calc_principal_moments()
         return self._principal_moments # type: ignore  - self._principal_moments is set to ndarray in calc_principal_moments()
+
+    @property
+    def percent_on_N(self) -> float:
+        if self._percent_on_N is None:
+            self._percent_on_N = self.calc_weight_on_heteroatom("N")
+        return self._percent_on_N
+
+    @property
+    def percent_on_O(self) -> float:
+        if self._percent_on_O is None:
+            self._percent_on_O = self.calc_weight_on_heteroatom("O")
+        return self._percent_on_O
+
+    @property
+    def percent_on_S(self) -> float:
+        if self._percent_on_S is None:
+            self._percent_on_S = self.calc_weight_on_heteroatom("S")
+        return self._percent_on_S
+
+    @property
+    def percent_on_P(self) -> float:
+        if self._percent_on_P is None:
+            self._percent_on_P = self.calc_weight_on_heteroatom("P")
+        return self._percent_on_P
 
     @classmethod
     def fromJsonFile(cls, orbital_file: str, mo_number: int, **kwargs) -> 'MolecularOrbital':
@@ -164,12 +197,20 @@ class MolecularOrbital:
         """
         Create a dict with important calculated properties and then convert to json str with json module.
         """
-        obj: SerializedMolecularOrbital = {
-            "centre_of_mass": self.center_of_mass.tolist()
+        
+        return json.dumps(self.toDict())
+
+    def toDict(self) -> SerializedMolecularOrbital:
+        return {
+            "molecule_name": self.molecule_name
+            , "centre_of_mass": self.center_of_mass.tolist()
             , "principal_moments": self.principal_moments.tolist()
             , "principal_axes": self.principal_axes.tolist()
+            , "percent_on_N": self.percent_on_N
+            , "percent_on_O": self.percent_on_O
+            , "percent_on_S": self.percent_on_S
+            , "percent_on_P": self.percent_on_P
         } # type: ignore
-        return json.dumps(obj)
 
     
     def calc_atomic_weight(self, atomic_contribution: AtomicContribution) -> float:
@@ -196,12 +237,14 @@ class MolecularOrbital:
         """
 
         return sum(
-            [self.calc_atomic_weight(
-                i)**-2 for i in self.mo["atomic_contributions"].values()]
+            [
+                self.calc_atomic_weight(i)**-2 
+                    for i in self.mo["atomic_contributions"].values()
+            ]
         )**-1
 
 
-    def calc_weight_on_heteroatoms(self, heteroatom_symbol: str):
+    def calc_weight_on_heteroatom(self, heteroatom_symbol: str) -> float:
         """
         Weight on heteroatoms:
         One can define the weight of the orbital on N as:
@@ -210,10 +253,12 @@ class MolecularOrbital:
 
                 in python: sum([weight(i) for i in orbital.atoms if i.atomic_symbol == "N"]) 
         """
-        return sum(
-            [self.calc_atomic_weight(i) for i in self.mo["atomic_contributions"].values(
-            ) if i["atom_symbol"].strip().lower() == heteroatom_symbol.strip().lower()]
-        )
+        return float(sum(
+            [
+                self.calc_atomic_weight(i) for i in self.mo["atomic_contributions"].values() 
+                    if i["atom_symbol"].strip() == heteroatom_symbol.strip()
+            ]
+        ))
 
     def calc_inertia_tensor(self) -> np.ndarray:
         r"""
