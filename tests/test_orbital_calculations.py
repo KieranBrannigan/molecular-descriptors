@@ -1,9 +1,10 @@
+import os
 from typing import List
 import unittest
 
 import numpy as np
 
-from y4_python.python_modules.orbital_calculations import MolecularOrbital, PointMass as PM, calc_inertia_tensor, calc_principle_axes, calc_center_of_mass
+from y4_python.python_modules.orbital_calculations import MolecularOrbital as MO, PointMass as PM, calc_inertia_tensor, calc_principal_axes, calc_center_of_mass
 
 
 class TestOrbitalCalculations(unittest.TestCase):
@@ -134,6 +135,14 @@ class TestOrbitalCalculations(unittest.TestCase):
         self.assertEqual(homoNum, exp_homoNum)
         self.assertEqual(lumoNum, exp_lumoNum)
 
+    def test_percent_on_heteroatom(self):
+        test_json_file = os.path.join("tests","anthracene_output.json")
+        mo = MO.fromJsonFile(test_json_file, MO.HOMO)
+
+        self.assertEqual(mo.percent_on_N, 0)
+        self.assertEqual(mo.percent_on_O, 0)
+        self.assertEqual(mo.percent_on_S, 0)
+        self.assertEqual(mo.percent_on_P, 0)
 
 
 
