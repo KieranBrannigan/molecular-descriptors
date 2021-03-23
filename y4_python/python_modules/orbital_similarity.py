@@ -53,7 +53,7 @@ def percent_heteroatom_difference(mo1: SerializedMolecularOrbital, mo2: Serializ
     return diff
 
 
-def orbital_distance(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital, inertia_coeff:float=1., IPR_coeff:float=1, O_coeff:float=1, N_coeff:float=1, S_coeff:float=1):
+def orbital_distance(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital, inertia_coeff:float=1., IPR_coeff:float=1, O_coeff:float=1, N_coeff:float=1, S_coeff:float=1, P_coeff:float=1):
     """
     Compute the Distance between 2 (calculated) molecular orbitals.
 
@@ -67,14 +67,15 @@ def orbital_distance(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOr
     inertia_diff = inertia_difference(mo1["principal_moments"], mo2["principal_moments"])
     IPR_diff = IPR_difference(mo1, mo2)
 
-    heteroatom_coeff_sum = O_coeff + N_coeff + S_coeff
+    heteroatom_coeff_sum = O_coeff + N_coeff + S_coeff + P_coeff
     if heteroatom_coeff_sum == 0:
         heteroatom_diff = 0
     else:
         O_diff = percent_heteroatom_difference(mo1, mo2, "O")
         N_diff = percent_heteroatom_difference(mo1, mo2, "N")
         S_diff = percent_heteroatom_difference(mo1, mo2, "S")
-        heteroatom_diff = ( O_coeff * O_diff + N_coeff * N_diff + S_diff * S_coeff )  / heteroatom_coeff_sum
+        P_diff = percent_heteroatom_difference(mo1, mo2, "P")
+        heteroatom_diff = ( O_coeff * O_diff + N_coeff * N_diff + S_diff * S_coeff + P_diff * P_coeff )  / heteroatom_coeff_sum
 
 
     distance = inertia_coeff * inertia_diff + IPR_coeff * IPR_diff + heteroatom_diff

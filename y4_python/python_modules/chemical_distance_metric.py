@@ -21,6 +21,8 @@ class MetricParams(TypedDict):
     IPR_coefficient: float
     N_coefficient: float
     O_coefficient: float
+    S_coefficient: float
+    P_coefficient: float
     c_struct: float
 
 def chemical_distance(
@@ -34,6 +36,8 @@ def chemical_distance(
     , IPR_coefficient=1.0
     , N_coefficient=1.0
     , O_coefficient=1.0
+    , S_coefficient=1.0
+    , P_coefficient=1.0
     ):
     """
     https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.DistanceMetric.html
@@ -70,6 +74,8 @@ def chemical_distance(
             , IPR_coeff=IPR_coefficient
             , N_coeff=N_coefficient
             , O_coeff=O_coefficient
+            , S_coeff=S_coefficient
+            , P_coeff=P_coefficient
         )
 
     dist_struct = 0    
