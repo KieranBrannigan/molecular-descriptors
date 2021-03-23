@@ -2,7 +2,7 @@ import json
 import os
 import sqlite3
 import csv
-from typing import Iterable, List, Mapping, NamedTuple, Tuple
+from typing import Iterable, List, Mapping, NamedTuple, Optional, Tuple
 
 import numpy as np
 from rdkit.DataStructs.cDataStructs import BitVectToText, CreateFromBitString, ExplicitBitVect
@@ -22,7 +22,7 @@ class DatasetItem(NamedTuple):
     E_blyp: float
     smiles: str
     fingerprint: ExplicitBitVect
-    serialized_molecular_orbital: str
+    serialized_molecular_orbital: Optional[str]
 
 class DB:
 
@@ -165,7 +165,7 @@ class DB:
         r = self.cur.execute(
             "SELECT mol_id FROM dataset ORDER BY `rowid`"
         )
-        return r.fetchall()
+        return [x[0] for x in r.fetchall()]
 
     def get_smiles(self) -> np.ndarray:
         "Return smiles ordered by rowid"
@@ -195,11 +195,13 @@ class DB:
 def main(database_path, orbitalsDir, BLYP_energies_file, PM7_energies_file, SMILES_file):
     """
     Example parameters:
-    orbitalsDir = "D:\\Projects\\y4-project\\sampleInputs\\11k_orbitals"
-    BLYP_file = "D:\\Projects\\y4-project\\sampleInputs\\11k_BLYP_homo_energies.csv"
-    PM7_file = "D:\\Projects\\y4-project\\sampleInputs\\11k_PM7_homo_energies.csv"
-    SMILES_file = "D:\\Projects\\y4-project\\sampleInputs\\SMILES_labels.csv"
+    database_path = "y4_python\\1k_molecule_database_eV.db"
+    orbitalsDir = "sampleInputs\\11k_orbitals"
+    BLYP_energies_file = "sampleInputs\\11k_BLYP_homo_energies.csv"
+    PM7_energies_file = "sampleInputs\\11k_PM7_homo_energies.csv"
+    SMILES_file = "sampleInputs\\SMILES_labels.csv"
     """
+    print(database_path, orbitalsDir, BLYP_energies_file, PM7_energies_file, SMILES_file)
 
     ### Read the smiles representations of each molecule into a dictionary.
     ### This gives us O(1) lookup time, and ~1000 entries shouldn't be too memory demanding. (TODO: what about 100,000? :O )
@@ -231,11 +233,16 @@ def main(database_path, orbitalsDir, BLYP_energies_file, PM7_energies_file, SMIL
             rdk_fingerprint = fingerprint_from_smiles(smiles, Consts.RDK_FP)
             if not isinstance(rdk_fingerprint, ExplicitBitVect):
                 raise Exception("rdk_fingerprint was not instance of ExplicitBitVect")
-            serialized_molecular_orbital = MolecularOrbital.fromJsonFile(
-                os.path.join(orbitalsDir, f"{blyp_mol_id}.json")
-                , mo_number=MolecularOrbital.HOMO
-            ).serialize()
-        
+            try:
+                serialized_molecular_orbital = MolecularOrbital.fromJsonFile(
+                    os.path.join(orbitalsDir, f"{blyp_mol_id}.json")
+                    , mo_number=MolecularOrbital.HOMO
+                ).serialize()
+            except FileNotFoundError as e:
+                print(e)
+                print("Molecular orbital file not found. For this molecule will insert null in serialized_mol_orb column")
+                serialized_molecular_orbital = None
+
 
             db.add_dataset_row(
                 DatasetItem(blyp_mol_id, atomic_units2eV(float(E_pm7)), atomic_units2eV(float(E_blyp)), smiles, rdk_fingerprint, serialized_molecular_orbital)
