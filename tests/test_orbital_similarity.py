@@ -8,7 +8,7 @@ class TestOrbitalSimilarity(unittest.TestCase):
         m1 = (1,1,1)
         m2 = (2,2,2)
 
-        expected = 3
+        expected = 3/36
 
         result = inertia_difference(m1, m2)
 
@@ -24,9 +24,9 @@ class TestOrbitalSimilarity(unittest.TestCase):
         self.assertEqual(expected, result)
 
         m1 = (1,1,1)
-        m2 = (-1,-1,-1)
-
-        expected = 12
+        m2 = (3,3,3)
+ 
+        expected = 12/81
 
         result = inertia_difference(m1, m2)
 

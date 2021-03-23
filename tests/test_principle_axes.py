@@ -19,6 +19,6 @@ class TestPrincipleAxes(unittest.TestCase):
         testfile = join(testDir, "unit_square_orbital.json")
         mo = MolecularOrbital.fromJsonFile(testfile, MolecularOrbital.HOMO, molecule_name="unit square")
         mo.plot(mo.molecule_name, 111, fig)
-        print(mo.principle_axes)
+        print(mo.principal_axes)
 
         plt.show()
