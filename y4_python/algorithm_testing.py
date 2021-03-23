@@ -4,6 +4,8 @@ from itertools import combinations
 import os
 import bisect
 from typing import Any, Iterable, List, Tuple
+
+import sklearn
 from y4_python.python_modules.orbital_similarity import orbital_distance
 
 def my_insort_left(a, x, lo=0, hi=None):
@@ -160,51 +162,78 @@ from time import perf_counter
 # t1 = perf_counter()
 # print(f"algo took {t1 - t0} seconds")
 
+
+def sklearnNeighbours(n_neighbors=2):
+    """
+    Minimum example for sklearn.NearestNeighbors.kneighbors
+
+    ref: https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html#sklearn.neighbors.NearestNeighbors.kneighbors
+    """
+    from sklearn.neighbors import NearestNeighbors
+    samples = [
+        [0., 0., 0.]
+        , [1., 1., 1.]
+        , [2., 2., 2.]
+    ]
+    neigh = NearestNeighbors(n_neighbors=n_neighbors)
+    neigh.fit(samples)
+
+    kneigh = neigh.kneighbors([
+            [1.5,1.5,1.5]
+            , [0.5,0.5,0.5]
+        ]
+    ) # returns (array(distances), array(indices))
+    print(kneigh[1])
+    print(kneigh)
+
+
 if __name__ == "__main__":
     from .python_modules.database import DB 
 
-    db = DB(os.path.join("y4_python","molecule_database-eV.db"))
+    # db = DB(os.path.join("y4_python","molecule_database-eV.db"))
 
-    all_ = db.get_all()[:10_000]
+    # all_ = db.get_all()[:10_000]
 
-    pairs = combinations(all_, 2)
+    # pairs = combinations(all_, 2)
 
-    pairs_map = map(
-        lambda pair: (orbital_distance(
-            pair[0][5]
-            , pair[1][5]
-        ),) + pair
-        , pairs
-    )
-    k=10
-    t0 = perf_counter()
-    most, least = algo(
-        pairs_map
-        , k=k
-        , key=lambda x: x[0]
-    )
-    t1 = perf_counter()
-    # print(most, least)
-    print(f"took {t1-t0} seconds.")
+    # pairs_map = map(
+    #     lambda pair: (orbital_distance(
+    #         pair[0][5]
+    #         , pair[1][5]
+    #     ),) + pair
+    #     , pairs
+    # )
+    # k=10
+    # t0 = perf_counter()
+    # most, least = algo(
+    #     pairs_map
+    #     , k=k
+    #     , key=lambda x: x[0]
+    # )
+    # t1 = perf_counter()
+    # # print(most, least)
+    # print(f"took {t1-t0} seconds.")
 
-    pairs = combinations(all_, 2)
+    # pairs = combinations(all_, 2)
 
-    t0 = perf_counter()
-    distances = []
-    for x,y in pairs:
-        i = x[5]
-        j = y[5]
-        distance = orbital_distance(i,j)
-        distances.append(
-            (
-                distance
-                , x # (molName, Epm7, Eblyp, smiles, fingerprints, serialized_mol_orb)
-                , y # (molName, Epm7, Eblyp, smiles, fingerprints, serialized_mol_orb)
-            )
-        )
+    # t0 = perf_counter()
+    # distances = []
+    # for x,y in pairs:
+    #     i = x[5]
+    #     j = y[5]
+    #     distance = orbital_distance(i,j)
+    #     distances.append(
+    #         (
+    #             distance
+    #             , x # (molName, Epm7, Eblyp, smiles, fingerprints, serialized_mol_orb)
+    #             , y # (molName, Epm7, Eblyp, smiles, fingerprints, serialized_mol_orb)
+    #         )
+    #     )
 
-    sortedDistances = sorted(distances, key=lambda x: x[0], reverse=True)
-    most, least = sortedDistances[-k:], sortedDistances[:k]
-    t1 = perf_counter()
-    #print(most, least)
-    print(f"took {t1-t0} seconds")
+    # sortedDistances = sorted(distances, key=lambda x: x[0], reverse=True)
+    # most, least = sortedDistances[-k:], sortedDistances[:k]
+    # t1 = perf_counter()
+    # #print(most, least)
+    # print(f"took {t1-t0} seconds")
+    sklearnNeighbours()
+
