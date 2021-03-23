@@ -17,6 +17,8 @@ from .python_modules.orbital_calculations import MolecularOrbital
 
 from .learning import main as learning_main
 
+print("__init__.py called.")
+
 def orbital_calculations():
     orbitalDir = os.path.join("sampleInputs", "PM7_optimisedOrbitals")
     orbital_calculations_main(orbitalDir)
@@ -35,20 +37,14 @@ def print_sorted_orbital_pairs():
     def fun(x):
         # x is file
         fname = os.path.join(orbitalDir, x)
-        homo = MolecularOrbital.fromJsonFile(fname, MolecularOrbital.HOMO)
-        return CalculatedMolecularOrbital(
-            inertiaTensor=homo.inertia_tensor
-            , principleAxes=homo.principle_axes
-            , principleMoments=homo.principle_moments
-            , IPR=0.1
-            , molecule_name=reducefname(x).capitalize()
-        )
+        homo = MolecularOrbital.fromJsonFile(fname, MolecularOrbital.HOMO, molecule_name=reducefname(fname))
+        return homo.toDict()
 
     orbitals = map(fun, files)
     sortedOrbitals = sort_molecular_orbital_pairs(orbitals)
 
     
-    results = [(x[0].molecule_name, x[1].molecule_name, x[2]) for x in sortedOrbitals]
+    results = [(x[0]["molecule_name"], x[1]["molecule_name"], x[2]) for x in sortedOrbitals]
     for row in results:
         print(
             ",".join([str(x).replace("_","-").capitalize() for x in row])
@@ -155,3 +151,4 @@ if __name__ == "__main__":
     ""
     #db_main()
     #learning_main()
+    print_sorted_orbital_pairs()

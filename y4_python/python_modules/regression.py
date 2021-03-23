@@ -3,7 +3,7 @@ from scipy.stats import linregress
 from .database import DB
 
 class MyRegression:
-    def __init__(self, db):
+    def __init__(self, db: DB):
         self.db = db
         pm7_energies = db.get_pm7_energies()
         blyp_energies = db.get_blyp_energies()

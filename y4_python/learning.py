@@ -27,7 +27,7 @@ from typing_extensions import TypedDict
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 
 from .python_modules.util import sanitize_without_hypervalencies, create_dir_if_not_exists
-from .python_modules.regression import distance_from_regress
+from .python_modules.regression import MyRegression
 from .python_modules.orbital_calculations import SerializedMolecularOrbital
 from .python_modules.structural_similarity import structural_distance
 from .python_modules.orbital_similarity import orbital_distance
@@ -50,11 +50,16 @@ def plot(x, y, data_label, x_label, y_label, title=None,):
     plt.tight_layout()
 
 def knn(k_neighbors, k_folds, X, y, metric_params, weights='distance'):
+
+    if k_folds == -1:
+        "Leave-One-Out"
+        k_folds = len(y)
+
     y_predicted = []
     y_real = []
 
     # n_jobs = -1, means use all CPUs
-    knn = neighbors.KNeighborsRegressor(k_neighbors, weights=weights, metric=chemical_distance, metric_params=metric_params, n_jobs=-1) 
+    knn = neighbors.KNeighborsRegressor(k_neighbors, weights=weights, metric=chemical_distance, metric_params=metric_params, n_jobs=1) 
 
     kf = KFold(n_splits=k_folds, shuffle=True)
 
@@ -100,26 +105,25 @@ def main_euclidean():
     for line in results:
         print(",".join(str(x) for x in line))
 
-def main_chemical_distance(k_neighbours, k_folds, orbital_coefficients: List[float]=[0.0,1.0], structural_coefficients:List[float]=[0.0, 1.0], weights='distance'):
+def main_chemical_distance(db: DB, k_neighbours, k_folds, orbital_coefficients: List[float]=[0.0,1.0], structural_coefficients:List[float]=[0.0, 1.0], weights='distance'):
     """
     X = smiles_list
     y = deviation from regress line
 
     """ 
-
-    db = DB()
     ### (mol_name, E_pm7, E_bly, SMILES, rdk_fingerprint, serialized_molecular_orbital)...
 
     mol_list = db.get_mol_ids()
     pm7_energies = db.get_pm7_energies()
     blyp_energies = db.get_blyp_energies()
     smiles_list = db.get_smiles()
-    global fingerprint_list
     fingerprint_list = db.get_fingerprints()
     molecular_orbital_list = db.get_molecular_orbitals()
 
+    my_regression = MyRegression(db)
+
     ### deviation_list = [[regression_error_value1, mol_name1],...]
-    deviation_list = (list(map(distance_from_regress, pm7_energies, blyp_energies)))
+    deviation_list = (list(map(my_regression.distance_from_regress, pm7_energies, blyp_energies)))
 
     #BLYP_minus_PM7_list = [blyp_energies[idx] - pm7_energies[idx] for idx in range(len(blyp_energies))]
     X = np.asarray([i for i in range(len(mol_list))]) # input data - index for each row of the database IE each molecule
@@ -158,7 +162,7 @@ def main_chemical_distance(k_neighbours, k_folds, orbital_coefficients: List[flo
             results.append((k_neighbours, c_orbital, c_struct, r, rmse))
     finish = perf_counter()
     for row in verbose_results: save_results(*row)
-    # plot(x=y_real, y=y_predicted, data_label="predicted vs real, k=5", x_label=r'$y_{real}$', y_label=r'$y_{pred}$')
+    plot(x=y_real, y=y_predicted, data_label="predicted vs real, k=5", x_label=r'$y_{real} / eV$', y_label=r'$y_{pred} / eV$')
     # r, rmse = get_r_rmse(y_real, y_predicted)
     # print(f"r={r} rmse={rmse}")
     # plt.show()
@@ -170,7 +174,7 @@ def main_chemical_distance(k_neighbours, k_folds, orbital_coefficients: List[flo
     # plot(x=blyp_energies, y=blyp_predicted, data_label="predicted blyp vs blyp", x_label="BLYP Energy (AU)", y_label="Predicted BLYP Energy (PM7 Energy + Correction) ")
     # r, rmse = get_r_rmse(blyp_energies, blyp_predicted)
     # print(f"r={r} rmse={rmse}")
-    # plt.show()
+    plt.show()
     print(f"time taken to train = {round(finish - start, ndigits=5)}")
     for line in results:
         print(",".join(str(x) for x in line))
@@ -208,9 +212,12 @@ def save_results(y_real:np.ndarray, y_predicted:np.ndarray, r, rmse, k_neighbors
 def show_results(results_file):
     "plot the results from a given file."
 
-def main():
-    main_chemical_distance(k_neighbours=5, k_folds=10, orbital_coefficients=[0.5], structural_coefficients=[1])
-    main_chemical_distance(k_neighbours=5, k_folds=10, orbital_coefficients=[0.5], structural_coefficients=[1], weights='uniform')
+def main(db: DB):
+
+    main_chemical_distance(db=db, k_neighbours=5, k_folds=-1, orbital_coefficients=[0], structural_coefficients=[1])
 
 if __name__ == "__main__":
-    main()
+    import sys
+    db_path = sys.argv[1]
+    db = DB(db_path)
+    main(db)
