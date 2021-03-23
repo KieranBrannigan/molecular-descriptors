@@ -62,10 +62,18 @@ def chemical_distance(
     i_mo = molecular_orbital_list[int(i[0])]
     j_mo = molecular_orbital_list[int(j[0])]
 
-    return c_orbital * orbital_distance(
-        i_mo, j_mo
-        , inertia_coeff=inertia_coefficient
-        , IPR_coeff=IPR_coefficient
-        , N_coeff=N_coefficient
-        , O_coeff=O_coefficient
-        ) + c_struct * structural_distance(i_fp, j_fp)
+    dist_orbital = 0
+    if c_orbital:
+        dist_orbital = c_orbital * orbital_distance(
+            i_mo, j_mo
+            , inertia_coeff=inertia_coefficient
+            , IPR_coeff=IPR_coefficient
+            , N_coeff=N_coefficient
+            , O_coeff=O_coefficient
+        )
+
+    dist_struct = 0    
+    if c_struct:
+        dist_struct = c_struct * structural_distance(i_fp, j_fp)
+
+    return dist_orbital + dist_struct
