@@ -16,13 +16,13 @@ from PIL.Image import Image
 from .python_modules.draw_molecule import PILFromSmiles, SMILEStoFiles, concat_images, resize_image
 from .python_modules.database import DB
 from .python_modules.util import density_scatter
+from .python_modules.regression import MyRegression
 
-def main():
+def main(db:DB):
     SIG_FIGS = 4
-    db=DB()
-
+    my_regression = MyRegression(db)
     ### Read the PM7 and BLYP35 Energy values into memory
-    ### Also read in the molecule names.
+    ### Also read in the molecule names and smiles.
     pm7_energies = db.get_pm7_energies()
 
     blyp_energies = db.get_blyp_energies()
@@ -36,13 +36,13 @@ def main():
         diff = x[idx] - y[idx]
         info = f"""{mol_name}, {x[idx]}, {y[idx]}
     BLYP35-PM7={np.format_float_scientific(diff, precision=SIG_FIGS)}
-    SMILES: {SMILES_dict[mol_name]}
+    SMILES: {smiles[idx]}
         """
         print(info)
         ax.set_title(title_base + "\n" + info)
 
         ### draw image
-        pil = PILFromSmiles(SMILES_dict[mol_name])
+        pil = PILFromSmiles(smiles[idx])
         ax3.imshow(pil)
 
         plt.tight_layout()
@@ -55,11 +55,10 @@ def main():
     y = blyp_energies
     x = np.array(x)
     y = np.array(y) 
-    slope, intercept, r_value, p_value, std_err = stats.linregress(x,y)
     ### regErrors = [[regression_error_value1, mol_name1],...]
     regErrors = (list(map(
         lambda idx: (
-            (slope*x[idx] + intercept) - y[idx]
+            my_regression.distance_from_regress(x[idx],y[idx])
             , labels[idx]
             , smiles[idx]
         )
@@ -76,7 +75,7 @@ def main():
     points = ax.scatter(x, y, c=absRegErrors.T[0].astype(np.float), picker=True)
     #ax = density_scatter(x, y, ax, fig=fig, picker=True)
     #yEqualsX, = ax.plot(x, x, color="green")
-    regressionLine, = ax.plot(x, slope*x+intercept, color="orange")
+    regressionLine, = ax.plot(x, my_regression.slope*x+my_regression.intercept, color="orange")
     # ax.legend(
     #     (regressionLine,), ('regression line')
     #     )
@@ -93,11 +92,11 @@ def main():
     ### Add textbox for regression values
 
     textstr = f"""
-    r = {np.format_float_scientific(r_value, precision=SIG_FIGS)}
-    p = {np.format_float_scientific(p_value, precision=SIG_FIGS)}
-    std_err = {np.format_float_scientific(std_err, precision=SIG_FIGS)}
-    slope = {np.format_float_scientific(slope, precision=SIG_FIGS)}
-    intercept = {np.format_float_scientific(intercept, precision=SIG_FIGS)}
+    r = {np.format_float_scientific(my_regression.r_value, precision=SIG_FIGS)}
+    p = {np.format_float_scientific(my_regression.p_value, precision=SIG_FIGS)}
+    std_err = {np.format_float_scientific(my_regression.std_err, precision=SIG_FIGS)}
+    slope = {np.format_float_scientific(my_regression.slope, precision=SIG_FIGS)}
+    intercept = {np.format_float_scientific(my_regression.intercept, precision=SIG_FIGS)}
     """
     print(textstr)
     props = {
@@ -120,7 +119,7 @@ def main():
     images: List[Image] = SMILEStoFiles(
         [x[2] for x in mostNegativeDeviation]
         , labels=[
-            f"{x[1]}\nΔE = {np.round_(x[0],decimals=4)}" for x in mostNegativeDeviation
+            f"{x[1]}\nΔE = {np.round_(x[0],decimals=4)} eV" for x in mostNegativeDeviation
             ]
         )
     outFile = os.path.join( "output_mols", "most_negative_deviations.png")
@@ -134,7 +133,7 @@ def main():
     images: List[Image] = SMILEStoFiles(
         [x[2] for x in mostPositiveDeviation]
         , labels=[
-            f"{x[1]}\nΔE = {np.round_(x[0],decimals=4)}" for x in mostPositiveDeviation]
+            f"{x[1]}\nΔE = {np.round_(x[0],decimals=4)} eV" for x in mostPositiveDeviation]
         ,
         )
     outFile = os.path.join( "output_mols", "most_positive_deviations.png")
@@ -143,4 +142,7 @@ def main():
     grid_img.save(outFile)
 
 if __name__ == "__main__":
-    main()
+    import sys
+    db_path = sys.argv[1]
+    db = DB(db_path)
+    main(db)
