@@ -13,6 +13,7 @@ import numpy as np
 from scipy.stats import linregress
 
 from matplotlib import pyplot as plt
+import seaborn as sns
 
 from PIL import Image
 from PIL import ImageFont
@@ -114,19 +115,31 @@ def least_most_similar_images(mostSimilar, leastSimilar, outDir, distance_fun: C
             dE_x = regression.distance_from_regress(x_pm7, x_blyp)
             dE_y = regression.distance_from_regress(y_pm7, y_blyp)
 
-            x_description = x_mol_name + "\n" + f"ΔE = {np.round_(dE_x, decimals=4)}"
-            y_description = y_mol_name + "\n" + f"ΔE = {np.round_(dE_y, decimals=4)}"
+            x_description = x_mol_name + "\n" + f"ΔE = {np.round_(dE_x, decimals=4)} eV"
+            y_description = y_mol_name + "\n" + f"ΔE = {np.round_(dE_y, decimals=4)} eV"
 
-            img = _MolsToGridImage([mol_x, mol_y],molsPerRow=2,subImgSize=(400,400))
+            subImgSize = (400, 400)
+            img = _MolsToGridImage([mol_x, mol_y],molsPerRow=2,subImgSize=subImgSize)
             #img=Chem.Draw.MolsToGridImage([mol_x, mol_y],molsPerRow=2,subImgSize=(400,400))  
             # fname = join("..","output_mols","least_similar",x[0] + "__" + y[0] + ".png")
             # img.save(fname)
             # img = Image.open(fname)
             draw = ImageDraw.Draw(img)
 
+            W, H = subImgSize
+            ### Draw thin rectangle around img
+            draw.rectangle(
+                [0,0,W*2,H]
+                , width = 2
+                , outline="#000000"
+            )
+
             mFont = ImageFont.truetype("arial", 32)
             myText = f"{distance_x_label(distance_fun)} = {np.round_(distance, decimals=3)}"
-            draw.text((300, 0),myText,(0,0,0), font=mFont)
+            w,h = draw.textsize(myText, mFont)
+            draw.text(
+                (W-w/2, 0),myText,(0,0,0), font=mFont
+            )
             
             mediumFont = ImageFont.truetype("arial", 24)
             draw.text(
@@ -158,7 +171,7 @@ def least_most_similar_images(mostSimilar, leastSimilar, outDir, distance_fun: C
 
 #exit()
 
-def deviation_difference_vs_distance(db:DB, distance_fun: Callable[[Any], float], show=False, **kwargs):
+def deviation_difference_vs_distance(db:DB, distance_fun: Callable[..., float], resultsDir, show=False, **kwargs):
     ###########################
     """
     For each pair i,j in dataset, calculate a D_ij and Y_ij,
@@ -172,7 +185,7 @@ def deviation_difference_vs_distance(db:DB, distance_fun: Callable[[Any], float]
     ###########################
     from itertools import chain
 
-    outfolder = os.path.join("results", f"Y-vs-D-{distance_fun.__name__}")
+    outfolder = os.path.join(resultsDir, f"Y-vs-D-{distance_fun.__name__}")
 
     create_dir_if_not_exists(outfolder)
     today = datetime.today().strftime("%Y-%m-%d-%H-%M-%S")
@@ -211,8 +224,8 @@ def deviation_difference_vs_distance(db:DB, distance_fun: Callable[[Any], float]
 
     fig = plt.figure()
     ax = fig.add_subplot()
-    ax.hist2d(X,Y, bins=100)
-
+    h = ax.hist2d(X,Y, bins=100, cmin=1)
+    fig.colorbar(h[3], ax=ax)
     ax.set_xlabel(f"{distance_x_label(distance_fun)}, D")
     ax.set_ylabel("Difference in energy deviation, Y (eV)")
 
@@ -241,7 +254,7 @@ def show_2d_histogram_data(filename):
 
     fig = plt.figure()
     ax = fig.add_subplot()
-    h = ax.hist2d(X, Y, bins=100)
+    h = ax.hist2d(X, Y, bins=100, cmin=1)
     fig.colorbar(h[3], ax=ax)
     ax.set_xlabel(f"{x_label}, D")
     ax.set_ylabel("Difference in energy deviation, Y (eV)")
@@ -249,7 +262,7 @@ def show_2d_histogram_data(filename):
 
     plt.show()
 
-def distance_distribution(db:DB, distance_fun: Callable, show=False, **kwargs):
+def distance_distribution(db:DB, distance_fun: Callable, resultsDir, show=False, **kwargs):
     """
     Show distribution of distances for chosen distance function. 
     Make sure that column of interest lines up correctly with the chosen distance function,
@@ -286,7 +299,7 @@ def distance_distribution(db:DB, distance_fun: Callable, show=False, **kwargs):
     Y = values
     X = bins[:-1]
     outfile = os.path.join(
-        "results"
+        resultsDir
         , f"{distance_fun.__name__}_distribution"
         , datetime.today().strftime("%Y-%m-%d-%H-%M-%S")
     )
@@ -294,12 +307,12 @@ def distance_distribution(db:DB, distance_fun: Callable, show=False, **kwargs):
 
     fig = plt.figure()
     ax = fig.add_subplot()
-    width = ( max(X) - min(X) )/ ( len(X)*2 )
+    width = ( max(X) - min(X) )/ ( len(X)*3 )
     ax.bar(X, Y, width=width)
     #ax.set_title("Distribution of Structural Distances")
     x_label = distance_x_label(distance_fun)
     ax.set_xlabel(f"{x_label}, D")
-    ax.set_ylabel("Number of instances / Probability density")
+    ax.set_ylabel("Number of instances")
     plt.tight_layout()
     plt.savefig(outfile + ".png")
     if show:
@@ -429,7 +442,7 @@ def save_most_least(mostDistant, leastDistant, outDir):
     pickle this information?
     """
     import pickle
-
+    create_dir_if_not_exists(outDir)
     mostDistantOutFile = os.path.join(outDir, "mostDistant.pkl")
     leastDistantOutFile = os.path.join(outDir, "leastDistant.pkl")
     with open(mostDistantOutFile, "wb") as MostDistantFile, open(leastDistantOutFile, "wb") as LeastDistantFile:
@@ -437,7 +450,7 @@ def save_most_least(mostDistant, leastDistant, outDir):
         pickle.dump(leastDistant, LeastDistantFile)
 
 
-def avg_distance_of_k_neighbours(k, db:DB, distance_fun: Callable, show=False):
+def avg_distance_of_k_neighbours(k, db:DB, distance_fun: Callable, resultsDir, ax, show=False):
     """
     Find the k closest neighbours for that point,
     then calculate the average distance.
@@ -457,9 +470,6 @@ def avg_distance_of_k_neighbours(k, db:DB, distance_fun: Callable, show=False):
     TotalTime = 11713*11712*1e-5s = 1371s = 22.8mins
 
     """
-
-    outfolder = os.path.join("results", f"avg_{distance_fun.__name__}_of_neighbours_")
-    outfile = os.path.join(outfolder, today)
 
     column_of_interest = funColumnMap[distance_fun]
 
@@ -492,19 +502,21 @@ def avg_distance_of_k_neighbours(k, db:DB, distance_fun: Callable, show=False):
     Y = hist[0]
     X = hist[1][:-1]
 
+    outfolder = os.path.join(resultsDir, f"avg_{distance_fun.__name__}_of_neighbours_")
     today = datetime.today().strftime("%Y-%m-%d-%H-%M-%S")
+    outfile = os.path.join(outfolder, today)
     save_distribution(X, Y, distance_fun, outfile + ".csv")
 
-    fig = plt.figure()
-    ax = fig.add_subplot()
     width = ( max(X) - min(X) )/ ( len(X)*2 )
-    ax.bar(X,Y,width=width)
-    ax.set_xlabel(f"Average {distance_x_label(distance_fun)} of k Neighbours, " + r'$D_{avg}$')
-    ax.set_ylabel("Number of instances")
-    plt.tight_layout()
-    plt.savefig(outfile + ".png")
+    # bar = ax.bar(X,Y,width=1, label=f"k={k}")
+    # ax.legend()
+    # ax.set_xlabel(f"Average {distance_x_label(distance_fun)} of k Neighbours, " + r'$D_{avg}$')
+    # ax.set_ylabel("Number of instances")
+    # plt.tight_layout()
+    # plt.savefig(outfile + ".png")
     if show:
         plt.show()
+    return (distances, k)
 
 
 
@@ -518,18 +530,44 @@ if __name__ == "__main__":
     then use numpy.load to load back up.
     """
 
-    print(datetime.today())
-    db = DB(os.path.join("y4_python", "molecule_database-eV.db"))
+    today = datetime.today()
+    print(today)
+    db_path = os.path.join("y4_python", "molecule_database-eV.db")
+    db = DB(db_path)
     regression = MyRegression(db)
+    resultsDir = os.path.join("results", today.strftime("%Y-%m-%d"), "molecule_database-eV")
     for distance_fun, kwargs in [(orbital_distance, {}), (structural_distance, {})]:
+    # for distance_fun, kwargs in [(structural_distance, {})]:
         ""
-        # mostDistant, leastDistant = get_most_least_similar(db, 6, distance_fun, descending=False,)
-        # outDir=os.path.join("results", f"{distance_fun.__name__}_images")
+        mostDistant, leastDistant = get_most_least_similar(db, 6, distance_fun, descending=False,)
+        outDir=os.path.join(resultsDir, f"{distance_fun.__name__}_images")
         # save_most_least(mostDistant, leastDistant, outDir)
         # least_most_similar_images(
-        #     mostSimilar=leastDistant, leastSimilar=mostDistant, outDir=os.path.join("results", f"{distance_fun.__name__}_images"), distance_fun=distance_fun
+        #     mostSimilar=leastDistant, leastSimilar=mostDistant, outDir=os.path.join(resultsDir, f"{distance_fun.__name__}_images"), distance_fun=distance_fun
         # )
-        # distance_distribution(db, distance_fun)
-        # deviation_difference_vs_distance(db=db, distance_fun=distance_fun, **kwargs)
-        avg_distance_of_k_neighbours(k=5, db=db, distance_fun=distance_fun, show=True)
+        distance_distribution(db, distance_fun, resultsDir, show=True)
+        deviation_difference_vs_distance(db=db, distance_fun=distance_fun, resultsDir=resultsDir, **kwargs)
+        # fig = plt.figure()
+        # ax = fig.add_subplot()
+        # results = []
+        # for k in range(5,25,5):
+        #     results.append(
+        #         avg_distance_of_k_neighbours(k=k, db=db, distance_fun=distance_fun, resultsDir=resultsDir, ax=ax, show=False) # returns (distances, k)
+        #     )
+        # # ax.hist([x[0] for x in results], bins='auto', label=[f"k={x[1]}" for x in results])
+        # # fig.legend()
+        # # plt.show()
+        # for distances, k in results:
+        #     sns.distplot(distances, bins='auto', label=f"k={k}")
+        # plt.xlabel(f"Average {distance_x_label(distance_fun)} of k Neighbours, " + r'$D_{avg}$')
+        # plt.ylabel("Number of instances")
+        # plt.legend()
+        # plt.show()
+        
+        
 
+"""
+TODO: NearestNeighbours.kneighbours can be used to return the indices (and distances) of nearest neighbours for a point.
+    -> check source code (/ docstring) for an example.
+    This could easily be used instead of our stupid algorithm (although we can see which is faster :p)
+"""
