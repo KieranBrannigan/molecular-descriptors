@@ -2,7 +2,7 @@ import csv
 import os
 from os.path import join
 import itertools
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, List, Mapping, Tuple
 from datetime import datetime
 
 from rdkit import Chem, DataStructs
@@ -573,7 +573,7 @@ def testing_metric(db: DB, distance_fun: Callable, resultsDir:str, n_neighbors=5
 
     ### Save arrays for later plotting
     today = datetime.today().strftime("%Y-%m-%d-%H-%M-%S")
-    outDir = os.path.join(resultsDir, "Y-vs-Descriptor", distance_x_label(distance_fun))
+    outDir = resultsDir
     create_dir_if_not_exists(outDir)
     outfile = os.path.join(outDir, today + ".npy")
     results = np.array((idxs, Y_averages, avg_distances)).T
@@ -584,7 +584,8 @@ def plot_testing_metric_results(filestr):
     #colours = scale_array(results[2], 0, 1)
 
     folder = os.path.dirname(filestr)
-    distance_fun: str = os.path.basename(folder)  
+    base: str = os.path.basename(folder)  
+    distance_fun = " ".join([x.capitalize() for x in base.split("_")])
     regress = linregress(results[2],results[1])
     print(regress)
     fig = plt.figure()
@@ -601,22 +602,83 @@ if __name__ == "__main__":
     #main2()
     #main3()
 
-    """
-    TODO: Use numpy.save to save to binary .npc file
-    then use numpy.load to load back up.
-    """
+    import sys
+    ### Pass distance_fun as arg
+    distance_fun_str = sys.argv[1]
+
+    ### Map arg to (distance_fun, kwargs) two-tuple
+    distance_fun_map: Mapping[str, Tuple[Callable, dict]] = {
+        "inertia_distance": (
+            orbital_distance, {
+                "inertia_coeff":1
+                , "IPR_coeff":0
+                , "O_coeff": 0
+                , "N_coeff": 0
+                , "S_coeff": 0
+                , "P_coeff": 0
+            }
+        )
+        , "structural_distance": (
+            structural_distance, {}
+        )
+        , "percent_on_O_distance": (
+            orbital_distance, {
+                "inertia_coeff":0
+                , "IPR_coeff":0
+                , "O_coeff": 1
+                , "N_coeff": 0
+                , "S_coeff": 0
+                , "P_coeff": 0
+            }
+        )
+        , "percent_on_N_distance": (
+            orbital_distance, {
+                "inertia_coeff":0
+                , "IPR_coeff":0
+                , "O_coeff": 0
+                , "N_coeff": 1
+                , "S_coeff": 0
+                , "P_coeff": 0
+            }
+        )
+        , "percent_on_S_distance": (
+            orbital_distance, {
+                "inertia_coeff":0
+                , "IPR_coeff":0
+                , "O_coeff": 0
+                , "N_coeff": 0
+                , "S_coeff": 1
+                , "P_coeff": 0
+            }
+        )
+        , "percent_on_P_distance": (
+            orbital_distance, {
+                "inertia_coeff":0
+                , "IPR_coeff":0
+                , "O_coeff": 0
+                , "N_coeff": 0
+                , "S_coeff": 0
+                , "P_coeff": 1
+            }
+        )
+    }
+
+    distance_fun, kwargs = distance_fun_map[distance_fun_str]
 
     today = datetime.today()
     print(today)
     db_path = os.path.join("y4_python", "11k_molecule_database_eV.db")
     db = DB(db_path)
     regression = MyRegression(db)
-    resultsDir = os.path.join("results", today.strftime("%Y-%m-%d"), "11k_molecule_database_eV")
-    for distance_fun, kwargs in [(orbital_distance, {}), (structural_distance, {})]:
+    resultsDir = os.path.join("results", today.strftime("%Y-%m-%d"), "11k_molecule_database_eV", distance_fun_str)
+
+    testing_metric(db, distance_fun, resultsDir, n_neighbors=5, **kwargs)
+
+    # for distance_fun, kwargs in [(orbital_distance, {}), (structural_distance, {})]:
     # for distance_fun, kwargs in [(structural_distance, {})]:
-        ""
+        
         #mostDistant, leastDistant = get_most_least_similar(db, 6, distance_fun, descending=False,)
-        outDir=os.path.join(resultsDir, f"{distance_fun.__name__}_images")
+        #outDir=os.path.join(resultsDir, f"{distance_fun.__name__}_images")
         # save_most_least(mostDistant, leastDistant, outDir)
         # least_most_similar_images(
         #     mostSimilar=leastDistant, leastSimilar=mostDistant, outDir=os.path.join(resultsDir, f"{distance_fun.__name__}_images"), distance_fun=distance_fun
@@ -641,6 +703,4 @@ if __name__ == "__main__":
         # plt.ylabel("Number of instances")
         # plt.legend()
         # plt.show()
-
-        #testing_metric(db, distance_fun, resultsDir, n_neighbors=5, **kwargs)
         
