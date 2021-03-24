@@ -12,6 +12,8 @@ from rdkit.Chem.Draw import _MolsToGridImage
 import numpy as np
 from scipy.stats import linregress
 
+from sklearn.neighbors import NearestNeighbors
+
 from matplotlib import pyplot as plt
 import seaborn as sns
 
@@ -22,7 +24,7 @@ from PIL import ImageDraw
 from .python_modules.draw_molecule import SMILEStoFiles, concat_images, resize_image
 from .python_modules.database import DB
 from .python_modules.regression import MyRegression
-from .python_modules.util import create_dir_if_not_exists, density_scatter
+from .python_modules.util import create_dir_if_not_exists, density_scatter, scale_array
 from .python_modules.orbital_similarity import orbital_distance
 from .python_modules.structural_similarity import structural_distance
 from .algorithm_testing import algo
@@ -518,7 +520,81 @@ def avg_distance_of_k_neighbours(k, db:DB, distance_fun: Callable, resultsDir, a
         plt.show()
     return (distances, k)
 
+def testing_metric(db: DB, distance_fun: Callable, resultsDir:str, n_neighbors=5, **distance_fun_kwargs):
+    """
+    For each point i, in the dataset, calculate the k nearest neighbours to that point based on the 
+    given distance metric (e.g. orbital inertia distance). Then for each nearest neighbour, n_k, calculate
+    the difference in their deviations, Y_k = distance_from_regress(E_Pm7(i), E_BLYP(i)) - distance_from_regress(E_Pm7(i), E_BLYP(i))
+    i.e. dE_i - d_E_{n_k}
+    Calculate the average Y_k for each point i, then plot i vs Y_k
 
+
+
+    TODO: NearestNeighbours.kneighbours can be used to return the indices (and distances) of nearest neighbours for a point.
+        -> check source code (/ docstring) for an example.
+        This could easily be used instead of our stupid algorithm (although we can see which is faster :p)
+
+        https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html#sklearn.neighbors.NearestNeighbors.kneighbors
+    """
+    all_ = np.array(db.get_all())
+    column_of_interest = funColumnMap[distance_fun]
+    def metric(i,j):
+        # i is array containing idx of a row, j is same of another row, return the distance between those rows based on distance_fun
+        i = all_[int(i[0])]
+        j = all_[int(j[0])]
+        return distance_fun(
+            i[column_of_interest]
+            , j[column_of_interest]
+            , **distance_fun_kwargs
+        )
+    all_Trans = all_.T
+    list_molid, list_pm7, list_blyp, list_smiles, list_fp, list_molorb = all_Trans
+    neigh = NearestNeighbors(n_neighbors=n_neighbors, metric=metric)
+    idxs = [idx for idx in range(len(all_))]
+    neigh.fit(np.array([idxs, idxs]).T)
+    all_distances, all_indices = neigh.kneighbors(np.array([idxs, idxs]).T) # (array(distances), array(indices))
+
+    Y_averages = []
+    avg_distances = []
+    idxs = [x for x in range(len(all_))]
+    for idx, distances in enumerate(all_distances):
+        indices = all_indices[idx]
+        avg_distance = np.mean(distances)
+        _, i_pm7, i_blyp, *_ = all_[idx]
+        dE_i = regression.distance_from_regress(i_pm7, i_blyp)
+        neighbor_rows = all_[indices]
+        avg_Y = np.mean(
+            [abs(regression.distance_from_regress(row[1], row[2]) - dE_i)
+                for row in neighbor_rows]
+            , dtype=np.float64
+        ) #type:ignore
+        Y_averages.append(avg_Y)
+        avg_distances.append(avg_distance)
+
+    ### Save arrays for later plotting
+    today = datetime.today().strftime("%Y-%m-%d-%H-%M-%S")
+    outDir = os.path.join(resultsDir, "Y-vs-Descriptor", distance_x_label(distance_fun))
+    create_dir_if_not_exists(outDir)
+    outfile = os.path.join(outDir, today + ".npy")
+    results = np.array((idxs, Y_averages, avg_distances)).T
+    np.save(outfile, results)
+
+def plot_testing_metric_results(filestr):
+    results = np.load(filestr).T
+    #colours = scale_array(results[2], 0, 1)
+
+    folder = os.path.dirname(filestr)
+    distance_fun: str = os.path.basename(folder)  
+    regress = linregress(results[2],results[1])
+    print(regress)
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    h = ax.hist2d(results[2],results[1], bins=500, cmin=1)
+    fig.colorbar(h[3], ax=ax)
+
+    ax.set_xlabel(distance_fun + r", $D_{i,j}$")
+    ax.set_ylabel(r"$Y_{i,j}$ / eV")
+    plt.show()
 
 if __name__ == "__main__":
     #main1()
@@ -532,21 +608,23 @@ if __name__ == "__main__":
 
     today = datetime.today()
     print(today)
-    db_path = os.path.join("y4_python", "molecule_database-eV.db")
+    db_path = os.path.join("y4_python", "11k_molecule_database_eV.db")
     db = DB(db_path)
     regression = MyRegression(db)
-    resultsDir = os.path.join("results", today.strftime("%Y-%m-%d"), "molecule_database-eV")
+    resultsDir = os.path.join("results", today.strftime("%Y-%m-%d"), "11k_molecule_database_eV")
     for distance_fun, kwargs in [(orbital_distance, {}), (structural_distance, {})]:
     # for distance_fun, kwargs in [(structural_distance, {})]:
         ""
-        mostDistant, leastDistant = get_most_least_similar(db, 6, distance_fun, descending=False,)
+        #mostDistant, leastDistant = get_most_least_similar(db, 6, distance_fun, descending=False,)
         outDir=os.path.join(resultsDir, f"{distance_fun.__name__}_images")
         # save_most_least(mostDistant, leastDistant, outDir)
         # least_most_similar_images(
         #     mostSimilar=leastDistant, leastSimilar=mostDistant, outDir=os.path.join(resultsDir, f"{distance_fun.__name__}_images"), distance_fun=distance_fun
         # )
-        distance_distribution(db, distance_fun, resultsDir, show=True)
-        deviation_difference_vs_distance(db=db, distance_fun=distance_fun, resultsDir=resultsDir, **kwargs)
+        # distance_distribution(db, distance_fun, resultsDir, show=True)
+        # deviation_difference_vs_distance(db=db, distance_fun=distance_fun, resultsDir=resultsDir, **kwargs)
+
+
         # fig = plt.figure()
         # ax = fig.add_subplot()
         # results = []
@@ -563,11 +641,6 @@ if __name__ == "__main__":
         # plt.ylabel("Number of instances")
         # plt.legend()
         # plt.show()
-        
-        
 
-"""
-TODO: NearestNeighbours.kneighbours can be used to return the indices (and distances) of nearest neighbours for a point.
-    -> check source code (/ docstring) for an example.
-    This could easily be used instead of our stupid algorithm (although we can see which is faster :p)
-"""
+        #testing_metric(db, distance_fun, resultsDir, n_neighbors=5, **kwargs)
+        
