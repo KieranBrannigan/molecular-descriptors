@@ -63,8 +63,10 @@ def orbital_distance(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOr
     I suspect the most important will be O,N percent, then moment of inertia, then IPR.
 
     """
-
-    inertia_diff = inertia_difference(mo1["principal_moments"], mo2["principal_moments"])
+    if inertia_coeff == 0:
+        inertia_diff = 0
+    else:
+        inertia_diff = inertia_coeff * inertia_difference(mo1["principal_moments"], mo2["principal_moments"])
     IPR_diff = IPR_difference(mo1, mo2)
 
     heteroatom_coeff_sum = O_coeff + N_coeff + S_coeff + P_coeff
@@ -78,7 +80,7 @@ def orbital_distance(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOr
         heteroatom_diff = ( O_coeff * O_diff + N_coeff * N_diff + S_diff * S_coeff + P_diff * P_coeff )  / heteroatom_coeff_sum
 
 
-    distance = inertia_coeff * inertia_diff + IPR_coeff * IPR_diff + heteroatom_diff
+    distance = inertia_diff + IPR_coeff * IPR_diff + heteroatom_diff
     
     return distance
 
