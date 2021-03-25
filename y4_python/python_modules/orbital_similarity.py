@@ -13,19 +13,33 @@ def inertia_difference(moments1: Union[Sequence[float], Tuple[float, float, floa
     based on their moment of inertia.
 
     New Distance: ( (x1-x2)**2 + (y1-y2)**2 + (z1-z2)**2) / (x1*x2+y1*y2+z1*z2)
+
+    Potential normalisation between 0->1:
+        sq_distance between two vectors, A_ and B_ = |A_B_|^2
+        from law of cosines:
+            cos(x) = ( |A|^2 + |B|^2 - |A_B_|^2 ) / ( 2|A||B| )
+            then squaring both sides gives
+            cos^2(x) = ( |A|^2 + |B|^2 - |A_B_|^2 ) / ( 2|A||B| ) ^ 2
+
+            cos^2(x) should vary between 0 and 1,
+            0 when angle = pi/2, 
+            1 when angle = 0
+
+        However, consider we have our two moments: m1 = (1,2,3) m2 = (10,1000,10000)
+
     """
     m1 = sorted(moments1)
     m2 = sorted(moments2)
     length_squared = sum(
         [(m1[idx] - m2[idx])**2 for idx in range(len(moments1))]
     )
-    dot_squared = sum([m1[idx] * m2[idx] for idx in range(len(moments1))]) ** 2
+    return length_squared**0.5
+    # dot_squared = sum([m1[idx] * m2[idx] for idx in range(len(moments1))]) ** 2
 
     ### a . b = |a||b|cos(x)
     ### 1/cos(x) = |a||b| / (a.b)
     ### ( |a||b| / (a.b) )^2 = 1/cos^2(x) , which ranges between 0->1
 
-    return length_squared / dot_squared
 
 
 def IPR_difference(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital):
