@@ -19,7 +19,7 @@ def inertia_difference(moments1: Union[Sequence[float], Tuple[float, float, floa
         from law of cosines:
             cos(x) = ( |A|^2 + |B|^2 - |A_B_|^2 ) / ( 2|A||B| )
             then squaring both sides gives
-            cos^2(x) = ( |A|^2 + |B|^2 - |A_B_|^2 ) / ( 2|A||B| ) ^ 2
+            cos^2(x) = ( |A|^2 + |B|^2 - |A_B_|^2 ) / ( 4 * |A|^2 * |B|^2 )
 
             cos^2(x) should vary between 0 and 1,
             0 when angle = pi/2, 
@@ -33,7 +33,15 @@ def inertia_difference(moments1: Union[Sequence[float], Tuple[float, float, floa
     length_squared = sum(
         [(m1[idx] - m2[idx])**2 for idx in range(len(moments1))]
     )
-    return length_squared**0.5
+    m1_sq_magnitude = sum((x**2 for x in m1))
+    m2_sq_magnitude = sum((x**2 for x in m2))
+
+    top_sq = ( m1_sq_magnitude + m2_sq_magnitude - length_squared )**2
+    bottom_sq = 4*m1_sq_magnitude*m2_sq_magnitude
+    cos_sq = top_sq / bottom_sq
+    return cos_sq
+
+
     # dot_squared = sum([m1[idx] * m2[idx] for idx in range(len(moments1))]) ** 2
 
     ### a . b = |a||b|cos(x)
