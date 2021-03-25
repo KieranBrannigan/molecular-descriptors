@@ -1,4 +1,5 @@
 # ref: https://rdkit.org/docs/source/rdkit.Chem.rdMolDescriptors.html
+from typing import List
 from rdkit.Chem.rdMolDescriptors import (
     CalcNumAliphaticCarbocycles
     , CalcNumAliphaticHeterocycles
@@ -98,3 +99,12 @@ def num_of_sulfate_bonds(smiles: str):
     "Return the number of sulfate bonds (S=O) in the given smiles str."
 
     return num_of_bonds_to_group(smiles, "S", "=O")
+
+def num_of_atoms(smiles: str, atoms: List[str]) -> int:
+    """
+    Given a list of atoms return the number of occurances of those atoms.
+
+    e.g. if atoms == ["F", "Cl", "Br", "I"] this will return the number of
+        halides in the smiles.
+    """
+    return sum((smiles.lower().count(x.lower()) for x in atoms))
