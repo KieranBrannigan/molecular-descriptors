@@ -2,6 +2,7 @@ import json
 import os
 import sqlite3
 import csv
+from sqlite3.dbapi2 import Cursor
 from typing import Iterable, List, Mapping, NamedTuple, Optional, Tuple
 
 import numpy as np
@@ -117,10 +118,14 @@ class DB:
     ######################
 
     def get_all(self):
+        r = self.get_all_cursor()
+        return r.fetchall()
+
+    def get_all_cursor(self) -> Cursor:
         r = self.cur.execute(
             "SELECT * FROM dataset ORDER BY `rowid`"
         )
-        return r.fetchall()
+        return r
 
     def get_row_from_mol_id(self, mol_id):
         r = self.cur.execute(
