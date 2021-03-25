@@ -45,6 +45,12 @@ class TestDescriptors(unittest.TestCase):
         result = get_end_of_branch_idx(test_string_with_branch, start_branch_idx)
         self.assertEqual(expected, result)
         
+    def test_num_of_atoms(self):
+        from y4_python.python_modules.descriptors import num_of_atoms
+        testSmiles = "C=CCSC/C(O)=N/S(=O)(=O)c1cnn(C)c1"
+        result = num_of_atoms(testSmiles, ["S", "N"])
+        expected = 2+3 # we expect 2 S and 3 N
+        self.assertEqual(expected, result)
 
 if __name__ == "__main__":
     unittest.main()
