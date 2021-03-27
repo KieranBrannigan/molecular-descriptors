@@ -4,6 +4,7 @@ from os.path import join
 import itertools
 from typing import Any, Callable, List, Mapping, Tuple, Union
 from datetime import datetime
+from y4_python.python_modules.orbital_calculations import SerializedMolecularOrbital
 
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
