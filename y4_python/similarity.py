@@ -590,11 +590,55 @@ def plot_testing_metric_results(filestr):
     print(regress)
     fig = plt.figure()
     ax = fig.add_subplot()
-    h = ax.hist2d(results[2],results[1], bins=500, cmin=1)
+    h = ax.hist2d(results[2],results[1], bins=100, cmin=1)
     fig.colorbar(h[3], ax=ax)
+    # ax.scatter(results[2], results[1])
 
-    ax.set_xlabel(distance_fun + r", $D_{i,j}$")
-    ax.set_ylabel(r"$Y_{i,j}$ / eV")
+    ax.set_xlabel(distance_fun + r", $\overline{D}_{n,k}$")
+    ax.set_ylabel(r"$\overline{Y}_{n,k}$ / eV")
+    plt.show()
+
+def dE_vs_descriptor(
+    db:DB
+    , descriptor_fun: Callable[[Union[SerializedMolecularOrbital, str]], float]
+    , funname: str
+    , column: int
+    , resultsDir:str
+):
+    "Plot dE vs value of some descriptor for each molecule"
+    all_ = db.get_all_cursor()
+    dEs = []
+    descriptor_values = []
+    for row in all_:
+        mol_id, pm7, blyp, smiles, fp, mol_orb = row
+        print(mol_id)
+        dEs.append(
+            regression.distance_from_regress(pm7, blyp)
+        )
+        descriptor_values.append(
+            descriptor_fun(
+                row[column]
+            )
+        )
+    outDir = resultsDir
+    create_dir_if_not_exists(outDir)
+    outfile = os.path.join(outDir, funname + ".npy")
+    np.save(outfile, np.array((descriptor_values, dEs)).T)
+
+def plot_dE_vs_descriptor(filestr: str):
+    results = np.load(filestr).T
+    base: str = os.path.basename(filestr)
+    descriptor_fun = os.path.splitext(base)[0]
+    regress = linregress(results[0],results[1])
+    print(regress)
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    h = ax.hist2d(results[0],results[1], bins=100, cmin=1)
+    fig.colorbar(h[3], ax=ax)
+    # ax.scatter(results[0], results[1])
+
+    ax.set_xlabel(descriptor_fun)
+    ax.set_ylabel(r"$\Delta E$ / eV")
     plt.show()
 
 if __name__ == "__main__":
