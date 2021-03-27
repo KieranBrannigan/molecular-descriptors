@@ -556,16 +556,23 @@ def testing_metric(db: DB, distance_fun: Callable, resultsDir:str, n_neighbors=5
 
     Y_averages = []
     avg_distances = []
-    idxs = [x for x in range(len(all_))]
+    dE_pred_list = []
+    dE_real_list = []
     for idx, distances in enumerate(all_distances):
         indices = all_indices[idx]
         avg_distance = np.mean(distances)
         _, i_pm7, i_blyp, *_ = all_[idx]
         dE_i = regression.distance_from_regress(i_pm7, i_blyp)
+        dE_real_list.append(dE_i)
         neighbor_rows = all_[indices]
+        
+        dE_k_list = [regression.distance_from_regress(row[1], row[2]) for row in neighbor_rows]
+
+        dE_pred = np.mean(dE_k_list, dtype=np.float64) #type:ignore
+        dE_pred_list.append(dE_pred)
+
         avg_Y = np.mean(
-            [abs(regression.distance_from_regress(row[1], row[2]) - dE_i)
-                for row in neighbor_rows]
+            [abs(dE_k - dE_i) for dE_k in dE_k_list]
             , dtype=np.float64
         ) #type:ignore
         Y_averages.append(avg_Y)
@@ -576,7 +583,7 @@ def testing_metric(db: DB, distance_fun: Callable, resultsDir:str, n_neighbors=5
     outDir = resultsDir
     create_dir_if_not_exists(outDir)
     outfile = os.path.join(outDir, today + ".npy")
-    results = np.array((idxs, Y_averages, avg_distances)).T
+    results = np.array((idxs, Y_averages, avg_distances, dE_pred_list, dE_real_list)).T
     np.save(outfile, results)
 
 def plot_testing_metric_results(filestr):
