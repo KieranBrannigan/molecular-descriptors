@@ -520,7 +520,7 @@ def avg_distance_of_k_neighbours(k, db:DB, distance_fun: Callable, resultsDir, a
         plt.show()
     return (distances, k)
 
-def testing_metric(db: DB, distance_fun: Callable, resultsDir:str, n_neighbors=5, **distance_fun_kwargs):
+def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_neighbors=5, **distance_fun_kwargs):
     """
     For each point i, in the dataset, calculate the k nearest neighbours to that point based on the 
     given distance metric (e.g. orbital inertia distance). Then for each nearest neighbour, n_k, calculate
@@ -579,10 +579,10 @@ def testing_metric(db: DB, distance_fun: Callable, resultsDir:str, n_neighbors=5
         avg_distances.append(avg_distance)
 
     ### Save arrays for later plotting
-    today = datetime.today().strftime("%Y-%m-%d-%H-%M-%S")
+    # today = datetime.today().strftime("%Y-%m-%d-%H-%M-%S")
     outDir = resultsDir
     create_dir_if_not_exists(outDir)
-    outfile = os.path.join(outDir, today + ".npy")
+    outfile = os.path.join(outDir, funname + ".npy")
     results = np.array((idxs, Y_averages, avg_distances, dE_pred_list, dE_real_list)).T
     np.save(outfile, results)
 
@@ -725,6 +725,7 @@ if __name__ == "__main__":
 
     testing_metric(db, distance_fun, resultsDir, n_neighbors=5, **kwargs)
 
+    testing_metric(db, distance_fun_str, distance_fun, resultsDir, n_neighbors=5, **kwargs)
     # for distance_fun, kwargs in [(orbital_distance, {}), (structural_distance, {})]:
     # for distance_fun, kwargs in [(structural_distance, {})]:
         
