@@ -2,7 +2,7 @@ import csv
 import os
 from os.path import join
 import itertools
-from typing import Any, Callable, List, Mapping, Tuple
+from typing import Any, Callable, List, Mapping, Tuple, Union
 from datetime import datetime
 
 from rdkit import Chem, DataStructs
