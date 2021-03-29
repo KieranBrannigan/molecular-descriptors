@@ -1,4 +1,7 @@
+import numpy as np
 from scipy.stats import linregress
+
+from sklearn.metrics import mean_squared_error
 
 from .database import DB
 
@@ -12,6 +15,10 @@ class MyRegression:
         y = blyp_energies
 
         self.slope, self.intercept, self.r_value, self.p_value, self.std_err = linregress(x,y)
+
+        ### RMSE of linear regression
+        y_pred = np.array(x) * self.slope + self.intercept
+        self.rmse = np.sqrt(mean_squared_error(y, y_pred))
 
     
     def distance_from_regress(self, x, y):
