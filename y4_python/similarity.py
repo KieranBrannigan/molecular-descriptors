@@ -457,8 +457,6 @@ def avg_distance_of_k_neighbours(k, db:DB, distance_fun: Callable, resultsDir, a
     """
     Find the k closest neighbours for that point,
     then calculate the average distance.
-
-    Plot avg. dist vs point? 
     
     Or just distribution of avg. distances? <- This one
 
@@ -592,18 +590,28 @@ def plot_testing_metric_results(filestr):
     #colours = scale_array(results[2], 0, 1)
 
     folder = os.path.dirname(filestr)
-    base: str = os.path.basename(folder)  
+    base: str = os.path.basename(filestr)  
     distance_fun = " ".join([x.capitalize() for x in base.split("_")])
     regress = linregress(results[2],results[1])
     print(regress)
     fig = plt.figure()
     ax = fig.add_subplot()
-    h = ax.hist2d(results[2],results[1], bins=100, cmin=1)
-    fig.colorbar(h[3], ax=ax)
-    # ax.scatter(results[2], results[1])
+    # h = ax.hist2d(results[2],results[1], bins=100, cmin=1)
+    # fig.colorbar(h[3], ax=ax)
+    ax.scatter(results[2], results[1])
 
     ax.set_xlabel(distance_fun + r", $\overline{D}_{n,k}$")
     ax.set_ylabel(r"$\overline{Y}_{n,k}$ / eV")
+
+    fig = plt.figure()
+    ax2 = fig.add_subplot()
+    h = ax2.hist2d(results[2],abs(results[3]-results[4]), bins=100, cmin=1)
+    fig.colorbar(h[3], ax=ax2)
+    # ax2.scatter(results[2], results[3]-results[4])
+
+    ax2.set_xlabel(distance_fun + r", $\overline{D}_{n,k}$")
+    ax2.set_ylabel(r"$|\Delta E_{pred} - \Delta E_{real}|$ / eV")
+
     plt.show()
 
 def dE_vs_descriptor(
@@ -715,6 +723,7 @@ if __name__ == "__main__":
         )
     }
 
+    n_neighbours = int(sys.argv[2])
     distance_fun, kwargs = distance_fun_map[distance_fun_str]
 
     today = datetime.today()
@@ -722,11 +731,38 @@ if __name__ == "__main__":
     db_path = os.path.join("y4_python", "11k_molecule_database_eV.db")
     db = DB(db_path)
     regression = MyRegression(db)
-    resultsDir = os.path.join("results", today.strftime("%Y-%m-%d"), "11k_molecule_database_eV", distance_fun_str)
+    #print(f"rmse={regression.rmse}")
+    resultsDir = os.path.join("results", "11k_molecule_database_eV", f"n_neigh={n_neighbours}", distance_fun_str)
 
-    testing_metric(db, distance_fun, resultsDir, n_neighbors=5, **kwargs)
+    from .python_modules.descriptors import num_of_atoms, num_of_phosphate_bonds, num_of_sulfate_bonds
+    
+    
 
-    testing_metric(db, distance_fun_str, distance_fun, resultsDir, n_neighbors=5, **kwargs)
+    # smiles_column = 3
+    # mol_orb_column = 5
+    # d = r"results\2021-03-29\11k_molecule_database_eV"
+    # for f in os.listdir(d):
+    #     plot_testing_metric_results(os.path.join(d,f))
+
+    # for funname, fun, col in (
+    #     ( "number of halide atoms", lambda x: num_of_atoms(x, ["F","Cl","Br","I"]), smiles_column )
+    #     , ( "number of phosphate bonds", num_of_phosphate_bonds, smiles_column )
+    #     , ( "number of sulfate bonds", num_of_sulfate_bonds, smiles_column )
+    #     , ( "percent HOMO on N", lambda x: x["percent_on_N"], mol_orb_column )
+    #     , ( "percent HOMO on O", lambda x: x["percent_on_O"], mol_orb_column )
+    #     , ( "percent HOMO on P", lambda x: x["percent_on_P"], mol_orb_column )
+    #     , ( "percent HOMO on S", lambda x: x["percent_on_S"], mol_orb_column )
+    # ):
+    #     dE_vs_descriptor(
+    #         db
+    #         , fun #type:ignore  MAKE SURE that fun takes arg of SerializedMolecularOrbital | str and returns float
+    #         , funname
+    #         , col
+    #         , resultsDir
+    #     )
+
+
+    testing_metric(db, distance_fun_str, distance_fun, resultsDir, n_neighbors=n_neighbours, **kwargs)
     # for distance_fun, kwargs in [(orbital_distance, {}), (structural_distance, {})]:
     # for distance_fun, kwargs in [(structural_distance, {})]:
         
