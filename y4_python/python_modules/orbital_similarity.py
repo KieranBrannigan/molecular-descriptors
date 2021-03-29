@@ -33,8 +33,8 @@ def inertia_difference(moments1: Union[Sequence[float], Tuple[float, float, floa
     length_squared = sum(
         [(m1[idx] - m2[idx])**2 for idx in range(len(moments1))]
     )
-    dot = sum([m1[idx] * m2[idx] for idx in range(len(moments1))])
-    return length_squared / dot
+    # dot = sum([m1[idx] * m2[idx] for idx in range(len(moments1))])
+    return length_squared
 
 
     # dot_squared = sum([m1[idx] * m2[idx] for idx in range(len(moments1))]) ** 2
