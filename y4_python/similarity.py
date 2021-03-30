@@ -527,13 +527,7 @@ def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_ne
     i.e. dE_i - d_E_{n_k}
     Calculate the average Y_k for each point i, then plot i vs Y_k
 
-
-
-    TODO: NearestNeighbours.kneighbours can be used to return the indices (and distances) of nearest neighbours for a point.
-        -> check source code (/ docstring) for an example.
-        This could easily be used instead of our stupid algorithm (although we can see which is faster :p)
-
-        https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html#sklearn.neighbors.NearestNeighbors.kneighbors
+    https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html#sklearn.neighbors.NearestNeighbors.kneighbors
     """
     all_ = np.array(db.get_all())
     column_of_interest = funColumnMap[distance_fun]
@@ -548,7 +542,7 @@ def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_ne
         )
     all_Trans = all_.T
     list_molid, list_pm7, list_blyp, list_smiles, list_fp, list_molorb = all_Trans
-    neigh = NearestNeighbors(n_neighbors=n_neighbors, metric=metric)
+    neigh = NearestNeighbors(n_neighbors=n_neighbors+1, metric=metric)
     idxs = [idx for idx in range(len(all_))]
     neigh.fit(np.array([idxs, idxs]).T)
     all_distances, all_indices = neigh.kneighbors(np.array([idxs, idxs]).T) # (array(distances), array(indices))
@@ -558,7 +552,13 @@ def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_ne
     dE_pred_list = []
     dE_real_list = []
     for idx, distances in enumerate(all_distances):
-        indices = all_indices[idx]
+        indices: List[Any] = all_indices[idx]
+
+        ### Remove the idx and distance due to comparing against itself
+        idx_of_self = indices.index(idx)
+        del distances[idx_of_self]
+        del indices[idx_of_self]
+
         avg_distance = np.mean(distances)
         _, i_pm7, i_blyp, *_ = all_[idx]
         dE_i = regression.distance_from_regress(i_pm7, i_blyp)
