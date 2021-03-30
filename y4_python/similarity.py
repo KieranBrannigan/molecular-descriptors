@@ -552,12 +552,13 @@ def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_ne
     dE_pred_list = []
     dE_real_list = []
     for idx, distances in enumerate(all_distances):
-        indices: List[Any] = all_indices[idx]
+        indices = all_indices[idx]
 
         ### Remove the idx and distance due to comparing against itself
-        idx_of_self = indices.index(idx)
-        del distances[idx_of_self]
-        del indices[idx_of_self]
+        idx_of_self: Tuple = np.where(indices == idx)
+        distances = np.delete(distances, idx_of_self[0][0])
+        indices = np.delete(indices, idx_of_self[0][0])
+
 
         avg_distance = np.mean(distances)
         _, i_pm7, i_blyp, *_ = all_[idx]
