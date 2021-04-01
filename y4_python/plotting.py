@@ -1,6 +1,7 @@
 import os
 import csv
 from typing import List
+from y4_python.python_modules.orbital_calculations import MolecularOrbital
 
 import numpy as np
 
@@ -20,6 +21,8 @@ from .python_modules.regression import MyRegression
 
 def main(db:DB):
     SIG_FIGS = 4
+    mol_orbitals_dir = r"sampleInputs\11k_orbitals"
+
     my_regression = MyRegression(db)
     ### Read the PM7 and BLYP35 Energy values into memory
     ### Also read in the molecule names and smiles.
@@ -29,10 +32,18 @@ def main(db:DB):
     labels = db.get_mol_ids()
     smiles = db.get_smiles()
 
+    orbital_fig = plt.figure()
     def mOnPick(event):
         idx = event.ind[0]
         # # find index of this x value in our x values (CHECK currently blyp)
         mol_name = labels[idx]
+
+        mo = MolecularOrbital.fromJsonFile(
+            os.path.join(mol_orbitals_dir, mol_name + ".json")
+            , MolecularOrbital.HOMO
+        ).plot(mol_name=mol_name, axis_number=111, fig=orbital_fig)
+        orbital_fig.canvas.draw()
+        
         diff = x[idx] - y[idx]
         info = f"""{mol_name}, {x[idx]}, {y[idx]}
     BLYP35-PM7={np.format_float_scientific(diff, precision=SIG_FIGS)}
@@ -49,8 +60,8 @@ def main(db:DB):
         fig.canvas.draw()
 
 
-    #fig, (ax, ax2, ax3) = plt.subplots(1,3)
-    fig, ax = plt.subplots()
+    fig, (ax, ax2, ax3) = plt.subplots(1,3)
+    # fig, ax = plt.subplots()
     x = pm7_energies
     y = blyp_energies
     x = np.array(x)
@@ -104,12 +115,12 @@ def main(db:DB):
         , "alpha": 0.5
         , "color": "white"
     }
-    # ax2.text(0.05, 0.95, textstr, transform=ax2.transAxes, fontsize=14,
-    #         verticalalignment='top', bbox=props)
-    # ax2.axis('off')
+    ax2.text(0.05, 0.95, textstr, transform=ax2.transAxes, fontsize=14,
+            verticalalignment='top', bbox=props)
+    ax2.axis('off')
 
 
-    # ax3.axis('off')
+    ax3.axis('off')
     plt.show()
 
     ### TODO: Output most negative deviation molecules
