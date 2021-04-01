@@ -1,11 +1,17 @@
 import os
-from typing import List, Iterable
+from typing import Callable, List, Iterable
+import numpy as np
+
+from rdkit import Chem
+from rdkit.Chem.Draw import _MolsToGridImage
 
 from rdkit.Chem import Draw, MolFromSmiles, AllChem, Mol, SanitizeMol, SanitizeFlags
 
 from PIL import Image, ImageFont, ImageDraw
 
-from .util import create_dir_if_not_exists, sanitize_without_hypervalencies
+from y4_python.python_modules.database import DB
+from y4_python.python_modules.regression import MyRegression
+from .util import create_dir_if_not_exists, sanitize_without_hypervalencies, distance_x_label
 
 def PILFromSmiles(smiles:str):
     """
@@ -77,3 +83,62 @@ def resize_image(image: Image.Image, new_width) -> Image.Image:
     hsize = int((float(image.size[1])*float(wpercent)))
     new_image = image.resize((new_width,hsize), Image.ANTIALIAS)
     return new_image
+
+def draw_grid_images(array, distance_fun: Callable, outputFile: str, regression: MyRegression, ):
+    """
+    array is list of distance: float, x: DB_row, y: DB_row
+    """
+    images = []
+    for distance,x,y in array:
+        x_mol_name, x_pm7, x_blyp, x_smiles, x_fp, x_serialized_mol = x
+        y_mol_name, y_pm7, y_blyp, y_smiles, y_fp, y_serialized_mol = y
+        mol_x = Chem.MolFromSmiles(x_smiles)
+        mol_y = Chem.MolFromSmiles(y_smiles)
+
+        dE_x = regression.distance_from_regress(x_pm7, x_blyp)
+        dE_y = regression.distance_from_regress(y_pm7, y_blyp)
+
+        x_description = x_mol_name + "\n" + f"ΔE = {np.round_(dE_x, decimals=4)} eV"
+        y_description = y_mol_name + "\n" + f"ΔE = {np.round_(dE_y, decimals=4)} eV"
+
+        subImgSize = (400, 400)
+        img = _MolsToGridImage([mol_x, mol_y],molsPerRow=2,subImgSize=subImgSize)
+        #img=Chem.Draw.MolsToGridImage([mol_x, mol_y],molsPerRow=2,subImgSize=(400,400))  
+        # fname = join("..","output_mols","least_similar",x[0] + "__" + y[0] + ".png")
+        # img.save(fname)
+        # img = Image.open(fname)
+        draw = ImageDraw.Draw(img)
+
+        W, H = subImgSize
+        ### Draw thin rectangle around img
+        draw.rectangle(
+            [0,0,W*2,H]
+            , width = 2
+            , outline="#000000"
+        )
+
+        mFont = ImageFont.truetype("arial", 32)
+        myText = f"{distance_x_label(distance_fun)} = {np.round_(distance, decimals=3)} \nY_ij = {np.round_(abs(dE_x - dE_y), decimals=4)}"
+        w,h = draw.textsize(myText, mFont)
+        draw.text(
+            (W-w/2, 0),myText,(0,0,0), font=mFont
+        )
+        
+        mediumFont = ImageFont.truetype("arial", 24)
+        draw.text(
+            (100, 340)
+            , x_description
+            , (82,82,82)
+            , font=mediumFont)
+        draw.text(
+            (500, 340)
+            , y_description
+            , (82,82,82)
+            , font=mediumFont)
+
+        images.append(img)
+        #img.save(fname)
+
+    grid_img = concat_images(images, num_cols=2)
+    resize_image(grid_img, 800)
+    grid_img.save(outputFile)

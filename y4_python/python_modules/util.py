@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from typing import Union, overload
+from typing import Callable, Union, overload
 
 from rdkit.Chem import Mol, SanitizeFlags, SanitizeMol, MolFromSmiles, RDKFingerprint
 from rdkit.Chem.AllChem import GetMorganFingerprint
@@ -28,12 +28,21 @@ def sanitize_without_hypervalencies(m: Mol):
         )
 
 
+def distance_x_label(distance_fun:Callable):
+    return ' '.join(
+        (x.capitalize() for x in distance_fun.__name__.split("_"))
+    )
+
 # Fingerprint constants
+def mol_from_smiles(smiles:str) -> Mol:
+    m = MolFromSmiles(smiles, sanitize=False)
+    sanitize_without_hypervalencies(m)
+    return m
 class Consts:
     MORGAN_FP = 1
     RDK_FP = 2
 
-def fingerprint_from_smiles(s, fingerprint_type: int) -> ExplicitBitVect:
+def fingerprint_from_smiles(smiles:str, fingerprint_type: int) -> ExplicitBitVect:
     """
     TODO: generalize to multiple fingerprints
     for now Morgan and RDK (daylight) Fingerprint
@@ -43,8 +52,7 @@ def fingerprint_from_smiles(s, fingerprint_type: int) -> ExplicitBitVect:
         Consts.RDK_FP: RDKFingerprint
     }
 
-    m = MolFromSmiles(s, sanitize=False)
-    sanitize_without_hypervalencies(m)
+    m = mol_from_smiles(smiles)
     return funMap[fingerprint_type](m)
 
 def density_scatter( x , y, ax = None, fig=None, sort = True, bins = 20, cmap='jet', **kwargs ):
