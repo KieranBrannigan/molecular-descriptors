@@ -17,6 +17,18 @@ class TestDescriptors(unittest.TestCase):
         result = num_of_phosphate_bonds(testSmiles)
         self.assertEqual(expected, result)
 
+        testSmiles = "CC(C)(C)C1=CC(=C(P(=O)(O)O)P(=O)(O)O)C=C(C(C)(C)C)C1=O"
+
+        expected = 2 # we expect to get 1 phosphate
+        result = num_of_phosphate_bonds(testSmiles)
+        self.assertEqual(expected, result)
+
+        testSmiles = "C1=CCC=CC1(=C(O(=P(=O)(O)O))P(=O)(O)O)"
+
+        expected = 3 # we expect to get 1 phosphate
+        result = num_of_phosphate_bonds(testSmiles)
+        self.assertEqual(expected, result)
+
     def test_num_of_sulfates(self):
         from y4_python.python_modules.descriptors import num_of_sulfate_bonds
         testSmiles = "CS(=O)C(C)(C)C1CC1C(c2ccccc2)P(C(C=O)C)(O)=O"
