@@ -2,13 +2,12 @@ import csv
 import os
 from os.path import join
 import itertools
-from typing import Any, Callable, List, Mapping, Tuple, Union
+from typing import Any, Callable, List, Mapping, Optional, Tuple, Union
 from datetime import datetime
 from y4_python.python_modules.orbital_calculations import SerializedMolecularOrbital
 
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
-from rdkit.Chem.Draw import _MolsToGridImage
 
 import numpy as np
 from scipy.stats import linregress
@@ -22,10 +21,10 @@ from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw 
 
-from .python_modules.draw_molecule import SMILEStoFiles, concat_images, resize_image
+from .python_modules.draw_molecule import SMILEStoFiles, concat_images, draw_grid_images, resize_image
 from .python_modules.database import DB
 from .python_modules.regression import MyRegression
-from .python_modules.util import create_dir_if_not_exists, density_scatter, scale_array
+from .python_modules.util import create_dir_if_not_exists, density_scatter, scale_array, distance_x_label
 from .python_modules.orbital_similarity import orbital_distance
 from .python_modules.structural_similarity import structural_distance
 from .algorithm_testing import algo
@@ -104,72 +103,18 @@ def get_most_least_similar(db: DB, k: int, distance_fun: Callable, **kwargs):
     return mostDistant, leastDistant
 
 
-def least_most_similar_images(mostSimilar, leastSimilar, outDir, distance_fun: Callable):
-    
-
-    def function(array, outputFile):
-        images = []
-        for distance,x,y in array:
-            x_mol_name, x_pm7, x_blyp, x_smiles, x_fp, x_serialized_mol = x
-            y_mol_name, y_pm7, y_blyp, y_smiles, y_fp, y_serialized_mol = y
-            mol_x = Chem.MolFromSmiles(x_smiles)
-            mol_y = Chem.MolFromSmiles(y_smiles)
-
-            dE_x = regression.distance_from_regress(x_pm7, x_blyp)
-            dE_y = regression.distance_from_regress(y_pm7, y_blyp)
-
-            x_description = x_mol_name + "\n" + f"ΔE = {np.round_(dE_x, decimals=4)} eV"
-            y_description = y_mol_name + "\n" + f"ΔE = {np.round_(dE_y, decimals=4)} eV"
-
-            subImgSize = (400, 400)
-            img = _MolsToGridImage([mol_x, mol_y],molsPerRow=2,subImgSize=subImgSize)
-            #img=Chem.Draw.MolsToGridImage([mol_x, mol_y],molsPerRow=2,subImgSize=(400,400))  
-            # fname = join("..","output_mols","least_similar",x[0] + "__" + y[0] + ".png")
-            # img.save(fname)
-            # img = Image.open(fname)
-            draw = ImageDraw.Draw(img)
-
-            W, H = subImgSize
-            ### Draw thin rectangle around img
-            draw.rectangle(
-                [0,0,W*2,H]
-                , width = 2
-                , outline="#000000"
-            )
-
-            mFont = ImageFont.truetype("arial", 32)
-            myText = f"{distance_x_label(distance_fun)} = {np.round_(distance, decimals=3)}"
-            w,h = draw.textsize(myText, mFont)
-            draw.text(
-                (W-w/2, 0),myText,(0,0,0), font=mFont
-            )
-            
-            mediumFont = ImageFont.truetype("arial", 24)
-            draw.text(
-                (100, 340)
-                , x_description
-                , (82,82,82)
-                , font=mediumFont)
-            draw.text(
-                (500, 340)
-                , y_description
-                , (82,82,82)
-                , font=mediumFont)
-
-            images.append(img)
-            #img.save(fname)
-
-        grid_img = concat_images(images, num_cols=2)
-        resize_image(grid_img, 800)
-        grid_img.save(outputFile)
-
+def least_most_similar_images(mostSimilar, leastSimilar, outDir: str, distance_fun: Callable):
+    """
+    mostSimilar and leastSimilar are an array containing tuples of (distance: float, x: DB_row, y: DB_row)
+    i.e. for distance, row_x, row_y in mostSimilar:...
+    """
     create_dir_if_not_exists(outDir)
     today = datetime.today().strftime("%H-%M-%S")
     outputFile = os.path.join(outDir, f"least_similar_{today}.png")
-    function(leastSimilar, outputFile)
+    draw_grid_images(leastSimilar, distance_fun, outputFile, regression)
 
     outputFile = os.path.join(outDir, f"most_similar_{today}.png")
-    function(mostSimilar, outputFile)
+    draw_grid_images(mostSimilar, distance_fun, outputFile, regression)
 
 
 #exit()
@@ -320,11 +265,6 @@ def distance_distribution(db:DB, distance_fun: Callable, resultsDir, show=False,
     plt.savefig(outfile + ".png")
     if show:
         plt.show()
-
-def distance_x_label(distance_fun:Callable):
-    return ' '.join(
-        (x.capitalize() for x in distance_fun.__name__.split("_"))
-    )
 
 def save_distribution(X,Y, distance_fun: Callable, outfile):
     create_dir_if_not_exists(os.path.dirname(outfile))
@@ -586,9 +526,12 @@ def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_ne
     results = np.array((idxs, Y_averages, avg_distances, dE_pred_list, dE_real_list)).T
     np.save(outfile, results)
 
-def plot_testing_metric_results(filestr):
-    results = np.load(filestr).T
-    #colours = scale_array(results[2], 0, 1)
+def plot_testing_metric_results(filestr, x_max: Optional[float]=None):
+    res = np.load(filestr).T
+    if x_max:
+        results = res.T[np.where(res[2] < x_max)].T
+    else:
+        results = res
 
     folder = os.path.dirname(filestr)
     base: str = os.path.basename(filestr)  
@@ -597,9 +540,9 @@ def plot_testing_metric_results(filestr):
     print(regress)
     fig = plt.figure()
     ax = fig.add_subplot()
-    # h = ax.hist2d(results[2],results[1], bins=100, cmin=1)
-    # fig.colorbar(h[3], ax=ax)
-    ax.scatter(results[2], results[1])
+    h = ax.hist2d(results[2],results[1], bins=100, cmin=1)
+    fig.colorbar(h[3], ax=ax)
+    # ax.scatter(results[2], results[1])
 
     ax.set_xlabel(distance_fun + r", $\overline{D}_{n,k}$")
     ax.set_ylabel(r"$\overline{Y}_{n,k}$ / eV")
@@ -614,6 +557,67 @@ def plot_testing_metric_results(filestr):
     ax2.set_ylabel(r"$|\Delta E_{pred} - \Delta E_{real}|$ / eV")
 
     plt.show()
+
+
+def get_small_D_large_Y_from_metric_results(results_file: str, distance_fun, how_many_you_want: int, db:DB,  y_min: float = 1.0, **distance_fun_kwargs):
+    """
+    Returns the idxs of molecules with small D_{n,k} and large Y_{n,k} when k=1
+
+    results_file should point to metric results .npy file for k=1
+    """
+    results = np.load(results_file)
+    filtered = results[np.where(results.T[1] > y_min)]
+    idxs = np.argsort(filtered.T[2])
+    sorted_D_ascending = filtered[idxs]
+    mol_idxs = sorted_D_ascending.T[0]
+    all_ = db.get_all()
+
+    column_of_interest = funColumnMap[distance_fun]
+    def metric(i,j):
+        # i is array containing idx of a row, j is same of another row, return the distance between those rows based on distance_fun
+        i = all_[int(i[0])]
+        j = all_[int(j[0])]
+        return distance_fun(
+            i[column_of_interest]
+            , j[column_of_interest]
+            , **distance_fun_kwargs
+        )
+    nn = NearestNeighbors(n_neighbors=2, metric=metric)
+    all_idxs = [idx for idx in range(len(all_))]
+    nn.fit(np.array([all_idxs, all_idxs]).T)
+    all_distances, all_indices = nn.kneighbors(np.array([mol_idxs,mol_idxs]).T)
+    output = [] # list of (distance: float, row_x, row_y)
+    mol_idxs_already_added_cache = set()
+    for idx, distances in enumerate(all_distances):
+        indices = all_indices[idx]
+        ### Remove the idx and distance due to comparing against itself
+        idx_of_self: Tuple = np.where(indices == mol_idxs[idx])
+        distances = np.delete(distances, idx_of_self[0][0])
+        indices = np.delete(indices, idx_of_self[0][0])
+
+        mol_idx = int(mol_idxs[idx])
+        neighbor_mol_idx = int(indices[0])
+
+        if mol_idx not in mol_idxs_already_added_cache and neighbor_mol_idx not in mol_idxs_already_added_cache:
+            mol_idxs_already_added_cache.add(mol_idx)
+            mol_idxs_already_added_cache.add(neighbor_mol_idx)
+        else:
+            continue
+        
+
+        row_i = all_[mol_idx]
+        neighbor_row = all_[neighbor_mol_idx]
+        distance = sum(distances)
+
+        # dE_i = regression.distance_from_regress(row_i[1], row_i[2])
+        # dE_k = regression.distance_from_regress(neighbor_row[1], neighbor_row[2])
+        # Y_nk = abs(dE_i - dE_k)
+
+        output.append((distance, row_i, neighbor_row))
+        if len(output) == how_many_you_want:
+            break
+
+    return output
 
 def dE_vs_descriptor(
     db:DB
@@ -662,6 +666,8 @@ if __name__ == "__main__":
     #main1()
     #main2()
     #main3()
+
+    
 
     import sys
     ### Pass distance_fun as arg
@@ -735,9 +741,29 @@ if __name__ == "__main__":
     #print(f"rmse={regression.rmse}")
     resultsDir = os.path.join("results", "11k_molecule_database_eV", f"n_neigh={n_neighbours}", distance_fun_str)
 
+    # plot_testing_metric_results(
+    #     r"results\2021-03-30\11k_molecule_database_eV\n_neigh=1\inertia_distance\inertia_distance.npy"
+    #     , x_max=0.03
+    # )
+
+    # low_D_large_Y = get_small_D_large_Y_from_metric_results(
+    #     r"results\2021-03-30\11k_molecule_database_eV\n_neigh=1\inertia_distance\inertia_distance.npy"
+    #     , orbital_distance
+    #     , 6
+    #     , db
+    #     , y_min=1.0
+    #     , **{
+    #             "inertia_coeff":1
+    #             , "IPR_coeff":0
+    #             , "O_coeff": 0
+    #             , "N_coeff": 0
+    #             , "S_coeff": 0
+    #             , "P_coeff": 0
+    #     }
+    # )
+    # draw_grid_images(low_D_large_Y, orbital_distance, os.path.join("results","LowDLargeY.png"), regression)
+
     from .python_modules.descriptors import num_of_atoms, num_of_phosphate_bonds, num_of_sulfate_bonds
-    
-    
 
     # smiles_column = 3
     # mol_orb_column = 5
@@ -763,7 +789,7 @@ if __name__ == "__main__":
     #     )
 
 
-    testing_metric(db, distance_fun_str, distance_fun, resultsDir, n_neighbors=n_neighbours, **kwargs)
+    #testing_metric(db, distance_fun_str, distance_fun, resultsDir, n_neighbors=n_neighbours, **kwargs)
     # for distance_fun, kwargs in [(orbital_distance, {}), (structural_distance, {})]:
     # for distance_fun, kwargs in [(structural_distance, {})]:
         
