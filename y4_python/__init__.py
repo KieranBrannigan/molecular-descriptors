@@ -2,6 +2,7 @@ import os
 from pprint import pprint
 from typing import Mapping, NamedTuple, Union
 from itertools import combinations
+from y4_python.python_modules.regression import MyRegression
 
 from matplotlib import pyplot as plt
 
@@ -136,6 +137,24 @@ def print_all_inertia_info():
         logfun(homo)
         print("----------------------")
 
+def check_r_rmse_for_different_kNeighbors():
+    import numpy as np
+    from scipy.stats import linregress
+    from sklearn.metrics import mean_absolute_error
+    d = r"results\2021-03-30\11k_molecule_database_eV"
+    out = []
+    for fold in os.listdir(d):
+        folder = os.path.join(d,fold)
+        f = os.listdir(folder)[0]
+        filepath = os.path.join(folder,f)
+        filepath = os.path.join(filepath, os.listdir(filepath)[0])
+        results = np.load(filepath).T
+        lr = linregress(results[2], results[1])
+        rvalue = lr.rvalue
+        rmse = mean_absolute_error(results[1], lr.intercept + lr.slope*results[2])
+        out.append(f"{fold},{rvalue:.4f},{rmse:.4f}")
+    print("n_neigh  rvalue  rmse")
+    print("\n".join(out))
 
 #orbital_calculations()
 
@@ -149,6 +168,28 @@ def print_all_inertia_info():
 # db_main()
 if __name__ == "__main__":
     ""
-    #db_main()
-    #learning_main()
-    #print_sorted_orbital_pairs()
+    import numpy as np
+    from scipy.stats import linregress
+
+    db = DB(os.path.join("y4_python","11k_molecule_database_eV.db"))
+    regression = MyRegression(db)
+    all_ = db.get_all()
+    results = np.load(r"results\2021-03-30\11k_molecule_database_eV\n_neigh=3\inertia_distance\inertia_distance.npy")
+    def mfilter(results_row):
+        idx = int(results_row[0])
+        row_i = all_[idx]
+        molid, pm7, blyp, *_ = row_i
+        dE_i = abs(regression.distance_from_regress(pm7, blyp))
+        return dE_i > 0.2401 and results_row[2] < 0.5
+    filtered = filter(mfilter, results)
+    filtered = np.array(list(filtered)).T
+    lr = linregress(filtered[2], filtered[1])
+    print(lr)
+    h = plt.hist2d(filtered[2], filtered[1], bins=100, cmin=1)
+    plt.colorbar(h[3])
+    # plt.scatter(filtered[2], filtered[1])
+    plt.xlabel(r"Inertia Distance, $\overline{D}_{n,k}$")
+    plt.ylabel(r"$\overline{Y}_{n,k}$ / eV")
+    plt.show()
+
+    
