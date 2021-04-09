@@ -105,7 +105,17 @@ def atomic_units2eV(au: np.ndarray) -> np.ndarray:...
 def atomic_units2eV(au: Union[int, float, np.ndarray]) -> Union[float, np.ndarray]:
     return au * HARTREE_IN_EV
 
-
+def verify_filename(filename:str):
+    "Check if filename exists, if exists increment filename with an integer"
+    i = 1
+    exists = os.path.isfile(filename)
+    new_filename, ext = os.path.splitext(filename)
+    while exists:
+        new_filename = new_filename + f"({i})"
+        exists = os.path.isfile(new_filename + ext)
+        i += 1
+    
+    return new_filename + ext
 
 
 filenames2smiles = {
