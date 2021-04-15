@@ -43,6 +43,16 @@ def plot(x, y, data_label, x_label, y_label,):
     ax.set_ylabel(y_label, fontweight='bold')
     plt.tight_layout()
 
+def hist(x, y, x_label, y_label):
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    h = ax.hist2d(x, y, bins=100, cmin=1)
+    fig.colorbar(h[3], ax=ax)
+    ax.set_xlabel(x_label, fontweight='bold')
+    ax.set_ylabel(y_label, fontweight='bold')
+    plt.tight_layout()
+    
+
 def knn(k_neighbors, k_folds, X, y, metric_params, weights='distance'):
 
     if k_folds == -1:
@@ -148,8 +158,11 @@ def save_results(y_real:np.ndarray, y_predicted:np.ndarray, r, rmse, k_neighbors
 
 def show_results(results_file):
     "plot the results from a given file."
-    y_real, y_predicted = results = np.load(results_file)
-    plot(x=y_real, y=y_predicted, data_label="predicted vs real, k=5", x_label=r'$y_{real} / eV$', y_label=r'$y_{pred} / eV$')
+    y_real, y_predicted = results = np.load(results_file).T
+    x_label=r'$y_{real} \, / \, eV$'
+    y_label=r'$y_{pred} \, / \, eV$'
+    plot(x=y_real, y=y_predicted, data_label="predicted vs real, k=5", x_label=x_label, y_label=y_label)
+    hist(x=y_real, y=y_predicted, x_label=x_label, y_label=y_label)
     plt.show()
 
 
