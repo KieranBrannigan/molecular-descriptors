@@ -4,10 +4,23 @@ import unittest
 
 import numpy as np
 
+import matplotlib.pyplot as plt 
+
 from y4_python.python_modules.orbital_calculations import MolecularOrbital as MO, PointMass as PM, calc_inertia_tensor, calc_principal_axes, calc_center_of_mass
 
 
 class TestOrbitalCalculations(unittest.TestCase):
+
+    def test_radial_distribution_function(self):
+        """
+        For now just plot the radial distribution function for some test files.
+        """
+
+        mo = MO.fromJsonFile(os.path.join("tests", "radial_distribution_test.json"), MO.HOMO)
+        X,F = mo.radial_dist_func(r_min=0.8, r_max=3.0, r_step=0.03, sigma=0.1)
+
+        plt.plot(X,F)
+        plt.show()
 
     def test_calc_inertia_tensor(self):
         """
