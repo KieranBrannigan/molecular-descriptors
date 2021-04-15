@@ -26,12 +26,16 @@ contents of the script:
 
 from typing import Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Tuple, Union
 import json
+import math
+from itertools import combinations
+
 from matplotlib.figure import Figure
 
 from typing_extensions import TypedDict
 
 import numpy as np
-from numpy.linalg import eig
+from numpy import linalg
+from numpy.linalg import eig, norm
 
 import matplotlib.colors as mcolors
 
@@ -212,7 +216,61 @@ class MolecularOrbital:
             , "percent_on_P": self.percent_on_P
         } # type: ignore
 
-    
+    def radial_dist_func(self, r_min=0.8, r_max=10, r_step=0.1, sigma=0.1):
+        """
+        f(r) = SUM_{i<j} { w_i * w_j * g( r-r_{ij} ) }
+        where g(r) is a Gaussian function with arbitrary standard deviation `sigma`, i.e.
+        
+                       1                    -r^2
+        g(r) =  ---------------- * exp(  -------------   ) 
+                sigma*sqrt(2*pi)          2 * sigma^2
+        
+        If Two orbitals have similar shape then corresponding functions f_1(r) and f_2(r) are similar.
+        Does not depend on orientation.
+
+        In practice one can use a sample of the function for r between ~0.8 and ~10 angstrom 
+        in steps of ~0.1 angstroms and sigma set to ~0.1. 
+        This will associate to any orbital a vector of ~90 elements. 
+        The distance between two orbitals can be computed as the norm of the 
+        difference between the two vectors.
+        
+        This function will call f(r) for all values between r_min and r_max in steps of r_step.
+        sigma is also given as an argument.
+        The default arg values will give a vector with 92 elements ( r_max-r_min / r_step )
+
+        """
+
+
+        # pre-calculating the w_i * w_j and r_{ij} terms
+        weight_products = []
+        mass_distances = []
+        for i_mass, j_mass in combinations(self.masses, 2):
+            # iterate i<j
+            "do something with i_mass and j_mass"
+            weight_products.append(i_mass.mass * j_mass.mass)
+            mass_distances.append( linalg.norm(i_mass.coords - j_mass.coords) )
+
+        g_norm = 1 / ( sigma*math.sqrt(2*math.pi) )
+        g_const = 1 / ( 2* (sigma**2) )
+        def g(r):
+            "Gaussian function with arbitrary st dev, sigma"
+            return g_norm * math.exp( - (r**2) * g_const )
+
+        def f(r):
+            "sum for i<j, w_i * w_j * g( r-r_{ij} )"
+            return sum(
+                weight_products[idx] * g(r - mass_distances[idx]) 
+                    for idx in range(len(weight_products))
+            )
+
+        X = []
+        F = []
+        for r in np.arange(r_min, r_max, r_step):
+            X.append(r)
+            F.append(f(r))
+
+        return X, F
+
     def calc_atomic_weight(self, atomic_contribution: AtomicContribution) -> float:
         """
         the weight on each atom is the sum of the square of the coefficient
