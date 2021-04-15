@@ -180,7 +180,7 @@ def main(db: DB):
             , "c_struct": 1
         }
     ]
-    main_chemical_distance(db=db, k_neighbours=5, k_folds=-1, metric_params_list=metric_params_list)
+    main_chemical_distance(db=db, k_neighbours=5, k_folds=10, metric_params_list=metric_params_list)
 
 if __name__ == "__main__":
     import sys
