@@ -55,8 +55,8 @@ def radial_distribution_difference(mo1: SerializedMolecularOrbital, mo2: Seriali
     dist2 = mo2["radial_distribution"]
 
     return sum(
-        ( dist1[idx] - dist2[idx]**2 for idx in range(len(dist1)) )
-    ) ** 2
+        ( abs(dist1[idx] - dist2[idx]) for idx in range(len(dist1)) )
+    )
 
 
 
@@ -116,8 +116,12 @@ def orbital_distance(
         P_diff = percent_heteroatom_difference(mo1, mo2, "P")
         heteroatom_diff = ( O_coeff * O_diff + N_coeff * N_diff + S_diff * S_coeff + P_diff * P_coeff )  / heteroatom_coeff_sum
 
+    if radial_distribution_coeff == 0:
+        radial_distribution_diff = 0
+    else:
+        radial_distribution_diff = radial_distribution_coeff * radial_distribution_difference(mo1, mo2)
 
-    distance = inertia_diff + IPR_coeff * IPR_diff + heteroatom_diff
+    distance = inertia_diff + IPR_coeff * IPR_diff + heteroatom_diff + radial_distribution_diff
     
     return distance
 
