@@ -277,9 +277,15 @@ class MolecularOrbital:
 
         X: List[float] = []
         F: List[float] = []
+        F_sum = 0
         for r in np.arange(r_min, r_max, r_step):
             X.append(r)
-            F.append(f(r))
+            f_ = f(r)
+            F.append(f_)
+            F_sum += f_
+
+        ### Normalize F so that it sums to 1
+        F = [x/F_sum for x in F]
 
         return X, F
 
