@@ -116,7 +116,7 @@ class MolecularOrbital:
     def radial_distribution(self) -> List[float]:
         ""
         if self._radial_distribution is None:
-            X, self._radial_distribution = self.radial_dist_func(self.radial_distribution_kwargs)
+            X, self._radial_distribution = self.radial_dist_func(**self.radial_distribution_kwargs)
         return self._radial_distribution
 
     @property
