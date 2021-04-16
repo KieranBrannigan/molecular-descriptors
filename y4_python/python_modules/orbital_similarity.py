@@ -43,6 +43,21 @@ def inertia_difference(moments1: Union[Sequence[float], Tuple[float, float, floa
     ### 1/cos(x) = |a||b| / (a.b)
     ### ( |a||b| / (a.b) )^2 = 1/cos^2(x) , which ranges between 0->1
 
+def radial_distribution_difference(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital):
+    """
+    Radial Distribution is a vector of points, corresponding to f(r) for a specific range of r values.
+      i.e. the vector [f(r) for r in np.arange(rmin,rmax,rstep)]
+
+    This returns the norm (magnitude) of the difference of the two vectors.
+    """
+
+    dist1 = mo1["radial_distribution"]
+    dist2 = mo2["radial_distribution"]
+
+    return sum(
+        ( dist1[idx] - dist2[idx]**2 for idx in range(len(dist1)) )
+    ) ** 2
+
 
 
 def IPR_difference(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital):
@@ -70,7 +85,12 @@ def percent_heteroatom_difference(mo1: SerializedMolecularOrbital, mo2: Serializ
     return diff
 
 
-def orbital_distance(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital, inertia_coeff:float=1., IPR_coeff:float=1, O_coeff:float=1, N_coeff:float=1, S_coeff:float=1, P_coeff:float=1):
+def orbital_distance(
+    mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital, inertia_coeff:float=1.
+    , IPR_coeff:float=1, O_coeff:float=1
+    , N_coeff:float=1, S_coeff:float=1, P_coeff:float=1
+    , radial_distribution_coeff: float=1
+    ):
     """
     Compute the Distance between 2 (calculated) molecular orbitals.
 
