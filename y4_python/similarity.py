@@ -480,8 +480,6 @@ def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_ne
             , j[column_of_interest]
             , **distance_fun_kwargs
         )
-    all_Trans = all_.T
-    list_molid, list_pm7, list_blyp, list_smiles, list_fp, list_molorb = all_Trans
     neigh = NearestNeighbors(n_neighbors=n_neighbors+1, metric=metric)
     idxs = [idx for idx in range(len(all_))]
     neigh.fit(np.array([idxs, idxs]).T)
@@ -728,6 +726,17 @@ if __name__ == "__main__":
                 , "P_coeff": 1
             }
         )
+        , "radial_distribution_distance": (
+            orbital_distance, {
+                "inertia_coeff":0
+                , "IPR_coeff":0
+                , "O_coeff": 0
+                , "N_coeff": 0
+                , "S_coeff": 0
+                , "P_coeff": 0
+                , "radial_distribution_coeff": 1
+            }
+        )
     }
 
     n_neighbours = int(sys.argv[2])
@@ -789,7 +798,7 @@ if __name__ == "__main__":
     #     )
 
 
-    #testing_metric(db, distance_fun_str, distance_fun, resultsDir, n_neighbors=n_neighbours, **kwargs)
+    testing_metric(db, distance_fun_str, distance_fun, resultsDir, n_neighbors=n_neighbours, **kwargs)
     # for distance_fun, kwargs in [(orbital_distance, {}), (structural_distance, {})]:
     # for distance_fun, kwargs in [(structural_distance, {})]:
         
