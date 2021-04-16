@@ -26,7 +26,7 @@ def orbital_calculations():
 
 
 
-def print_sorted_orbital_pairs():
+def print_sorted_orbital_pairs(orbital_distance_kwargs):
     """
     Gets the homo of each file in files.
     Compares every pair based on distance.
@@ -42,7 +42,7 @@ def print_sorted_orbital_pairs():
         return homo.toDict()
 
     orbitals = map(fun, files)
-    sortedOrbitals = sort_molecular_orbital_pairs(orbitals)
+    sortedOrbitals = sort_molecular_orbital_pairs(orbitals, orbital_distance_kwargs)
 
     
     results = [(x[0]["molecule_name"], x[1]["molecule_name"], x[2]) for x in sortedOrbitals]
@@ -151,7 +151,7 @@ def plot_all_radial_dist():
         ax = fig.add_subplot()
         ax.plot(X,F)
         ax.set_title(homo.molecule_name)
-        print(f"{homo.molecule_name} done.")
+        print(f"{homo.molecule_name} done. Sum = {sum(F)}")
     plt.show()
 
 def check_r_rmse_for_different_kNeighbors():
@@ -188,25 +188,27 @@ if __name__ == "__main__":
     import numpy as np
     from scipy.stats import linregress
 
-    db = DB(os.path.join("y4_python","11k_molecule_database_eV.db"))
-    regression = MyRegression(db)
-    all_ = db.get_all()
-    results = np.load(r"results\2021-03-30\11k_molecule_database_eV\n_neigh=3\inertia_distance\inertia_distance.npy")
-    def mfilter(results_row):
-        idx = int(results_row[0])
-        row_i = all_[idx]
-        molid, pm7, blyp, *_ = row_i
-        dE_i = abs(regression.distance_from_regress(pm7, blyp))
-        return dE_i > 0.2401 and results_row[2] < 0.5
-    filtered = filter(mfilter, results)
-    filtered = np.array(list(filtered)).T
-    lr = linregress(filtered[2], filtered[1])
-    print(lr)
-    h = plt.hist2d(filtered[2], filtered[1], bins=100, cmin=1)
-    plt.colorbar(h[3])
-    # plt.scatter(filtered[2], filtered[1])
-    plt.xlabel(r"Inertia Distance, $\overline{D}_{n,k}$")
-    plt.ylabel(r"$\overline{Y}_{n,k}$ / eV")
-    plt.show()
+    print_sorted_orbital_pairs({"inertia_coeff": 0})
+
+    # db = DB(os.path.join("y4_python","11k_molecule_database_eV.db"))
+    # regression = MyRegression(db)
+    # all_ = db.get_all()
+    # results = np.load(r"results\2021-03-30\11k_molecule_database_eV\n_neigh=3\inertia_distance\inertia_distance.npy")
+    # def mfilter(results_row):
+    #     idx = int(results_row[0])
+    #     row_i = all_[idx]
+    #     molid, pm7, blyp, *_ = row_i
+    #     dE_i = abs(regression.distance_from_regress(pm7, blyp))
+    #     return dE_i > 0.2401 and results_row[2] < 0.5
+    # filtered = filter(mfilter, results)
+    # filtered = np.array(list(filtered)).T
+    # lr = linregress(filtered[2], filtered[1])
+    # print(lr)
+    # h = plt.hist2d(filtered[2], filtered[1], bins=100, cmin=1)
+    # plt.colorbar(h[3])
+    # # plt.scatter(filtered[2], filtered[1])
+    # plt.xlabel(r"Inertia Distance, $\overline{D}_{n,k}$")
+    # plt.ylabel(r"$\overline{Y}_{n,k}$ / eV")
+    # plt.show()
 
     

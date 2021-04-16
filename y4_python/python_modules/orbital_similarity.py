@@ -124,6 +124,7 @@ def orbital_distance(
 
 def sort_molecular_orbital_pairs(
     orbitals: Union[Iterable[SerializedMolecularOrbital], Iterator[SerializedMolecularOrbital]]
+    , orbital_distance_kwargs: dict = {}
     ) -> List[Tuple[SerializedMolecularOrbital, SerializedMolecularOrbital, float]]:
     """
     Given list of molecular orbitals, order them in pairs, from 
@@ -133,6 +134,6 @@ def sort_molecular_orbital_pairs(
 
     pairs = combinations(orbitals, 2)
 
-    similarities = [(x,y, orbital_distance(x,y)) for x,y in pairs]
+    similarities = [(x,y, orbital_distance(x,y, **orbital_distance_kwargs)) for x,y in pairs]
 
     return sorted(similarities, key=lambda x: x[2])
