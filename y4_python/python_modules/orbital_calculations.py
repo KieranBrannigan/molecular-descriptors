@@ -85,12 +85,13 @@ class SerializedMolecularOrbital(TypedDict):
     percent_on_O: float
     percent_on_S: float
     percent_on_P: float
+    radial_distribution: List[float]
 
 class MolecularOrbital:
     HOMO: int = -1
     LUMO: int = -2
 
-    def __init__(self, mo: MolecularOrbitalDict, atomic_coords: AtomicCoords, molecule_name:str="N/A", mo_number:int=0, weight_scaling_factor=1):
+    def __init__(self, mo: MolecularOrbitalDict, atomic_coords: AtomicCoords, molecule_name:str="N/A", mo_number:int=0, weight_scaling_factor=1, radial_distribution_kwargs: dict = {}):
         self.mo = mo
         self.atomic_coords = atomic_coords
         self._masses: Optional[List[PointMass]] = None
@@ -108,9 +109,19 @@ class MolecularOrbital:
         ### see self.calc_masses
         self.weight_scaling_factor = weight_scaling_factor
 
+        self.radial_distribution_kwargs = radial_distribution_kwargs
+        self._radial_distribution: Optional[List[float]] = None
+
+    @property
+    def radial_distribution(self) -> List[float]:
+        ""
+        if self._radial_distribution is None:
+            X, self._radial_distribution = self.radial_dist_func(self.radial_distribution_kwargs)
+        return self._radial_distribution
+
     @property
     def masses(self) -> List[PointMass]:
-        if self._masses == None:
+        if self._masses is None:
             self._masses = self.calc_masses()
         return self._masses
 
@@ -214,9 +225,10 @@ class MolecularOrbital:
             , "percent_on_O": self.percent_on_O
             , "percent_on_S": self.percent_on_S
             , "percent_on_P": self.percent_on_P
+            , "radial_distribution": self.radial_distribution
         } # type: ignore
 
-    def radial_dist_func(self, r_min=0.8, r_max=10, r_step=0.1, sigma=0.1):
+    def radial_dist_func(self, r_min=0.8, r_max=10, r_step=0.1, sigma=0.1) -> Tuple[List[float], List[float]]:
         """
         f(r) = SUM_{i<j} { w_i * w_j * g( r-r_{ij} ) }
         where g(r) is a Gaussian function with arbitrary standard deviation `sigma`, i.e.
@@ -252,19 +264,19 @@ class MolecularOrbital:
 
         g_norm = 1 / ( sigma*math.sqrt(2*math.pi) )
         g_const = 1 / ( 2* (sigma**2) )
-        def g(r):
+        def g(r) -> float:
             "Gaussian function with arbitrary st dev, sigma"
             return g_norm * math.exp( - (r**2) * g_const )
 
-        def f(r):
+        def f(r) -> float:
             "sum for i<j, w_i * w_j * g( r-r_{ij} )"
             return sum(
                 weight_products[idx] * g(r - mass_distances[idx]) 
                     for idx in range(len(weight_products))
             )
 
-        X = []
-        F = []
+        X: List[float] = []
+        F: List[float] = []
         for r in np.arange(r_min, r_max, r_step):
             X.append(r)
             F.append(f(r))
