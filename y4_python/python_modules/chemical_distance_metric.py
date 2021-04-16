@@ -16,6 +16,7 @@ from y4_python.python_modules.orbital_similarity import orbital_distance
 class MetricParams(TypedDict):
     fingerprint_list: List[ExplicitBitVect]
     molecular_orbital_list: List[SerializedMolecularOrbital]
+    c_struct: float
     c_orbital: float
     inertia_coefficient: float
     IPR_coefficient: float
@@ -23,7 +24,7 @@ class MetricParams(TypedDict):
     O_coefficient: float
     S_coefficient: float
     P_coefficient: float
-    c_struct: float
+    radial_distribution_coeff: float
 
 def chemical_distance(
     i: np.ndarray
@@ -38,6 +39,7 @@ def chemical_distance(
     , O_coefficient=1.0
     , S_coefficient=1.0
     , P_coefficient=1.0
+    , radial_distribution_coeff=1.0
     ):
     """
     https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.DistanceMetric.html
@@ -76,6 +78,7 @@ def chemical_distance(
             , O_coeff=O_coefficient
             , S_coeff=S_coefficient
             , P_coeff=P_coefficient
+            , radial_distribution_coeff=radial_distribution_coeff
         )
 
     dist_struct = 0    
