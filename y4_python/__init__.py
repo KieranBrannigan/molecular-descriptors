@@ -137,6 +137,23 @@ def print_all_inertia_info():
         logfun(homo)
         print("----------------------")
 
+def plot_all_radial_dist():
+    """
+    For each file in files, print out the logfun (molname, homo num, centre of mass, principle moments)
+    """
+    from .python_modules.orbital_calculations import MolecularOrbital as MO
+    orbitalDir = os.path.join("sampleInputs", "PM7_optimisedOrbitals")
+    for f in os.listdir(orbitalDir):
+        filename = os.path.join(orbitalDir, f)
+        homo = MO.fromJsonFile(filename, MO.HOMO, molecule_name=reducefname(f).capitalize())
+        X,F = homo.radial_dist_func()
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        ax.plot(X,F)
+        ax.set_title(homo.molecule_name)
+        print(f"{homo.molecule_name} done.")
+    plt.show()
+
 def check_r_rmse_for_different_kNeighbors():
     import numpy as np
     from scipy.stats import linregress
