@@ -13,6 +13,7 @@ import numpy as np
 from scipy.stats import linregress
 
 from sklearn.neighbors import NearestNeighbors
+from sklearn.metrics import mean_absolute_error
 
 from matplotlib import pyplot as plt
 import seaborn as sns
@@ -535,7 +536,10 @@ def plot_testing_metric_results(filestr, x_max: Optional[float]=None):
     base: str = os.path.basename(filestr)  
     distance_fun = " ".join([x.capitalize() for x in base.split("_")])
     regress = linregress(results[2],results[1])
+    rmse = mean_absolute_error(results[1], [regress.slope*x + regress.intercept for x in results[2]])
     print(regress)
+    print(rmse)
+
     fig = plt.figure()
     ax = fig.add_subplot()
     h = ax.hist2d(results[2],results[1], bins=100, cmin=1)
@@ -768,6 +772,7 @@ if __name__ == "__main__":
     #             , "N_coeff": 0
     #             , "S_coeff": 0
     #             , "P_coeff": 0
+    #             , "radial_distribution_coeff":0
     #     }
     # )
     # draw_grid_images(low_D_large_Y, orbital_distance, os.path.join("results","LowDLargeY.png"), regression)
@@ -798,7 +803,7 @@ if __name__ == "__main__":
     #     )
 
 
-    testing_metric(db, distance_fun_str, distance_fun, resultsDir, n_neighbors=n_neighbours, **kwargs)
+    #testing_metric(db, distance_fun_str, distance_fun, resultsDir, n_neighbors=n_neighbours, **kwargs)
     # for distance_fun, kwargs in [(orbital_distance, {}), (structural_distance, {})]:
     # for distance_fun, kwargs in [(structural_distance, {})]:
         
