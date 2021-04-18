@@ -12,7 +12,7 @@ from .running_orbital_calculations import logfun, main as orbital_calculations_m
 
 from .python_modules.database import main as db_main, DB
 
-from .python_modules.orbital_similarity import sort_molecular_orbital_pairs, orbital_distance
+from .python_modules.orbital_similarity import radial_distribution_difference, sort_molecular_orbital_pairs, orbital_distance
 from .python_modules.structural_similarity import structural_distance
 from .python_modules.orbital_calculations import MolecularOrbital
 
@@ -45,7 +45,7 @@ def print_sorted_orbital_pairs(orbital_distance_kwargs):
     sortedOrbitals = sort_molecular_orbital_pairs(orbitals, orbital_distance_kwargs)
 
     
-    results = [(x[0]["molecule_name"], x[1]["molecule_name"], x[2]) for x in sortedOrbitals]
+    results = [sorted([x[0]["molecule_name"], x[1]["molecule_name"]]) + [x[2]] for x in sortedOrbitals]
     for row in results:
         print(
             ",".join([str(x).replace("_","-").capitalize() for x in row])
@@ -137,7 +137,7 @@ def print_all_inertia_info():
         logfun(homo)
         print("----------------------")
 
-def plot_all_radial_dist():
+def plot_all_radial_dist(radial_distribution_kwargs, outDir=False):
     """
     For each file in files, print out the logfun (molname, homo num, centre of mass, principle moments)
     """
@@ -145,13 +145,17 @@ def plot_all_radial_dist():
     orbitalDir = os.path.join("sampleInputs", "PM7_optimisedOrbitals")
     for f in os.listdir(orbitalDir):
         filename = os.path.join(orbitalDir, f)
-        homo = MO.fromJsonFile(filename, MO.HOMO, molecule_name=reducefname(f).capitalize())
-        X,F = homo.radial_dist_func()
+        homo = MO.fromJsonFile(filename, MO.HOMO, molecule_name=reducefname(f).capitalize(), radial_distribution_kwargs=radial_distribution_kwargs)
+        X,F = homo.radial_dist_func(**radial_distribution_kwargs)
         fig = plt.figure()
         ax = fig.add_subplot()
         ax.plot(X,F)
-        ax.set_title(homo.molecule_name)
+        #ax.set_title(homo.molecule_name + f", {radial_distribution_kwargs}")
+        ax.set_xlabel(r"$X_{RDF}$ / $\AA$")
+        ax.set_ylabel(r"$F_{RDF}$ / $E_h\,^2$")
         print(f"{homo.molecule_name} done. Sum = {sum(F)}")
+        if outDir:
+            fig.savefig(os.path.join(outDir, homo.molecule_name))
     plt.show()
 
 def check_r_rmse_for_different_kNeighbors():
@@ -188,7 +192,19 @@ if __name__ == "__main__":
     import numpy as np
     from scipy.stats import linregress
 
-    print_sorted_orbital_pairs({"inertia_coeff": 0})
+    #plot_all_radial_dist({}, r"D:\OneDrive - The University of Liverpool(1)\Uni\Y4 Project\WritingUp\DescriptorTesting\RadialDist")
+
+    # print_sorted_orbital_pairs(
+    #     {
+    #         "inertia_coeff":0
+    #         , "IPR_coeff":0
+    #         , "O_coeff":0
+    #         , "N_coeff":0
+    #         , "S_coeff":0
+    #         , "P_coeff":0
+    #         , "radial_distribution_coeff": 1
+    #     }
+    # )
 
     # db = DB(os.path.join("y4_python","11k_molecule_database_eV.db"))
     # regression = MyRegression(db)
