@@ -1,5 +1,6 @@
 import os
 from typing import Callable, List, Iterable
+from y4_python.python_modules.structural_similarity import structural_distance
 import numpy as np
 
 from rdkit import Chem
@@ -90,8 +91,11 @@ def draw_grid_images(array, distance_fun: Callable, outputFile: str, regression:
     """
     images = []
     for distance,x,y in array:
-        x_mol_name, x_pm7, x_blyp, x_smiles, x_fp, x_serialized_mol = x
-        y_mol_name, y_pm7, y_blyp, y_smiles, y_fp, y_serialized_mol = y
+        x_mol_name, x_pm7, x_blyp, x_smiles, x_fp, x_serialized_homo, x_serialized_lumo = x
+        y_mol_name, y_pm7, y_blyp, y_smiles, y_fp, y_serialized_homo, y_serialized_lumo = y
+
+        struct_distance = structural_distance(x_fp, y_fp)
+
         mol_x = Chem.MolFromSmiles(x_smiles)
         mol_y = Chem.MolFromSmiles(y_smiles)
 
@@ -118,7 +122,7 @@ def draw_grid_images(array, distance_fun: Callable, outputFile: str, regression:
         )
 
         mFont = ImageFont.truetype("arial", 32)
-        myText = f"{distance_x_label(distance_fun)} = {np.round_(distance, decimals=3)} \nY_ij = {np.round_(abs(dE_x - dE_y), decimals=4)}"
+        myText = f"{distance_x_label(distance_fun)} = {np.round_(distance, decimals=4)} \nStructural Distance = {np.round_(struct_distance, decimals=4)} \nY_ij = {np.round_(abs(dE_x - dE_y), decimals=4)}"
         w,h = draw.textsize(myText, mFont)
         draw.text(
             (W-w/2, 0),myText,(0,0,0), font=mFont
