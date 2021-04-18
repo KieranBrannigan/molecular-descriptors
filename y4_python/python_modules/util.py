@@ -126,4 +126,6 @@ filenames2smiles = {
     , "diphenyl-octatetrene":"C1=CC=CC=C1C=CC=CC=CC=CC2=CC=CC=C2"
     , "diphenyl-decapentene":"C1=CC=CC=C1C=CC=CC=CC=CC=CC2=CC=CC=C2"
     , "diphenyl-dodecahexene":"C1=CC=CC=C1C=CC=CC=CC=CC=CC=CC2=CC=CC=C2"
+    , "anthracene": "C1=CC=C2C=C3C=CC=CC3=CC2=C1"
+    , "butyl-anthracene": "C1=CC=CC2=C1C=C3C(=C2)C=CC(=C3)CCCC"
 }
