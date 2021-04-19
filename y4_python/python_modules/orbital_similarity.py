@@ -97,10 +97,10 @@ class OrbitalDistanceKwargs(TypedDict):
     radial_distribution_coeff: float
 
 def _mo_distance(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital
-    , inertia_coeff:float=1.
-    , IPR_coeff:float=1, O_coeff:float=1
-    , N_coeff:float=1, S_coeff:float=1, P_coeff:float=1
-    , radial_distribution_coeff: float=1
+    , inertia_coeff:float
+    , IPR_coeff:float, O_coeff:float
+    , N_coeff:float, S_coeff:float, P_coeff:float
+    , radial_distribution_coeff: float
     ):
     """
     Compute the Distance between 2 (calculated) molecular orbitals.
@@ -132,7 +132,7 @@ def _mo_distance(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbita
     else:
         radial_distribution_diff = radial_distribution_coeff * radial_distribution_difference(mo1, mo2)
 
-    distance = inertia_diff + IPR_coeff * IPR_diff + heteroatom_diff + radial_distribution_diff
+    distance = inertia_diff + heteroatom_diff + radial_distribution_diff
     
     return distance
     
@@ -140,17 +140,9 @@ def _mo_distance(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbita
 def orbital_distance(
     homo1: SerializedMolecularOrbital, lumo1: SerializedMolecularOrbital
     , homo2: SerializedMolecularOrbital, lumo2: SerializedMolecularOrbital
-    , homo_coeff:float=1.
-    , lumo_coeff:float=1.
-    , orbital_distance_kwargs: OrbitalDistanceKwargs = OrbitalDistanceKwargs(
-            inertia_coeff=1
-            , IPR_coeff=1
-            , O_coeff=1
-            , N_coeff=1
-            , S_coeff=1
-            , P_coeff=1
-            , radial_distribution_coeff= 1
-        )
+    , homo_coeff
+    , lumo_coeff
+    , orbital_distance_kwargs: OrbitalDistanceKwargs
     ):
     if homo_coeff == 0: # avoid calculation time
         homo_dist = 0
