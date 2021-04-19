@@ -455,7 +455,8 @@ def avg_distance_of_k_neighbours(k, db:DB, distance_fun: Callable, resultsDir, a
     return (distances, k)
 
 def testing_metric(
-    db: DB, funname, distance_fun: Callable, second_distance:Callable
+    db: DB, funname, distance_fun: Callable, second_fun_str:str
+    , second_distance:Callable
     , resultsDir:str, n_neighbors=5, distance_fun_kwargs:dict={}
     , second_distance_kwargs:dict={}
     ):
@@ -538,7 +539,7 @@ def testing_metric(
     # today = datetime.today().strftime("%Y-%m-%d-%H-%M-%S")
     outDir = resultsDir
     create_dir_if_not_exists(outDir)
-    outfile = os.path.join(outDir, funname + ".npy")
+    outfile = os.path.join(outDir, funname + "_" + second_fun_str, ".npy")
     results = np.array((idxs, Y_averages, avg_distances, dE_pred_list, dE_real_list, avg_second_distance_list)).T
     np.save(outfile, results)
 
@@ -874,7 +875,7 @@ if __name__ == "__main__":
 
     testing_metric(
         db, distance_fun_str+"_"+second_distance_str, distance_fun
-        , second_distance, resultsDir, n_neighbors=n_neighbours
+        , second_distance_str, second_distance, resultsDir, n_neighbors=n_neighbours
         , distance_fun_kwargs=kwargs, second_distance_kwargs=second_distance_kwargs
     )
     # for distance_fun, kwargs in [(orbital_distance, {}), (structural_distance, {})]:
