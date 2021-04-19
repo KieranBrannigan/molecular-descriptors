@@ -26,15 +26,15 @@ from .python_modules.draw_molecule import SMILEStoFiles, concat_images, draw_gri
 from .python_modules.database import DB
 from .python_modules.regression import MyRegression
 from .python_modules.util import create_dir_if_not_exists, density_scatter, scale_array, distance_x_label
-from .python_modules.orbital_similarity import orbital_distance
+from .python_modules.orbital_similarity import OrbitalDistanceKwargs, orbital_distance
 from .python_modules.structural_similarity import structural_distance
 from .algorithm_testing import algo
 
 
 funColumnMap = {
-    # map function : column of row for that function
-    orbital_distance : 5
-    , structural_distance: 4
+    # map function : column of row for that function RETURNS THE SLICE (START:END)
+    orbital_distance : (5,7)
+    , structural_distance: (4,5)
 }
 
 def sort_by_distance(distance_fun: Callable, descending=False, **kwargs):
@@ -43,12 +43,6 @@ def sort_by_distance(distance_fun: Callable, descending=False, **kwargs):
 
     Defaults to Ascending, for descending pass descending=True.
     """
-
-    funColumnMap = {
-        # map function : column of row for that function
-        orbital_distance : 5
-        , structural_distance: 4
-    }
 
     column_of_interest = funColumnMap[distance_fun]
 
@@ -471,14 +465,14 @@ def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_ne
     https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html#sklearn.neighbors.NearestNeighbors.kneighbors
     """
     all_ = np.array(db.get_all())
-    column_of_interest = funColumnMap[distance_fun]
+    coi = column_of_interest = funColumnMap[distance_fun]
     def metric(i,j):
         # i is array containing idx of a row, j is same of another row, return the distance between those rows based on distance_fun
         i = all_[int(i[0])]
         j = all_[int(j[0])]
         return distance_fun(
-            i[column_of_interest]
-            , j[column_of_interest]
+            *i[coi[0]:coi[1]]
+            , *j[coi[0]:coi[1]]
             , **distance_fun_kwargs
         )
     neigh = NearestNeighbors(n_neighbors=n_neighbors+1, metric=metric)
@@ -574,14 +568,14 @@ def get_small_D_large_Y_from_metric_results(results_file: str, distance_fun, how
     mol_idxs = sorted_D_ascending.T[0]
     all_ = db.get_all()
 
-    column_of_interest = funColumnMap[distance_fun]
+    coi = column_of_interest = funColumnMap[distance_fun]
     def metric(i,j):
         # i is array containing idx of a row, j is same of another row, return the distance between those rows based on distance_fun
         i = all_[int(i[0])]
         j = all_[int(j[0])]
         return distance_fun(
-            i[column_of_interest]
-            , j[column_of_interest]
+            *i[coi[0]:coi[1]]
+            , *j[coi[0]:coi[1]]
             , **distance_fun_kwargs
         )
     nn = NearestNeighbors(n_neighbors=2, metric=metric)
@@ -766,13 +760,17 @@ if __name__ == "__main__":
     #     , db
     #     , y_min=1.0
     #     , **{
-    #             "inertia_coeff":1
-    #             , "IPR_coeff":0
-    #             , "O_coeff": 0
-    #             , "N_coeff": 0
-    #             , "S_coeff": 0
-    #             , "P_coeff": 0
-    #             , "radial_distribution_coeff":0
+    #         "homo_coeff" : 1.0
+    #         , "lumo_coeff": 1.0
+    #         , "orbital_distance_kwargs": OrbitalDistanceKwargs(
+    #             inertia_coeff=1
+    #             , IPR_coeff=0
+    #             , O_coeff= 0
+    #             , N_coeff= 0
+    #             , S_coeff= 0
+    #             , P_coeff= 0
+    #             , radial_distribution_coeff=0
+    #         )
     #     }
     # )
     # draw_grid_images(low_D_large_Y, orbital_distance, os.path.join("results","LowDLargeY.png"), regression)
@@ -803,7 +801,7 @@ if __name__ == "__main__":
     #     )
 
 
-    #testing_metric(db, distance_fun_str, distance_fun, resultsDir, n_neighbors=n_neighbours, **kwargs)
+    testing_metric(db, distance_fun_str, distance_fun, resultsDir, n_neighbors=n_neighbours, **kwargs)
     # for distance_fun, kwargs in [(orbital_distance, {}), (structural_distance, {})]:
     # for distance_fun, kwargs in [(structural_distance, {})]:
         

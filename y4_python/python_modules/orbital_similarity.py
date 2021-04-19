@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from functools import reduce
 from typing import Iterable, Iterator, List, Sequence, Set, Tuple, Union
 
+from typing_extensions import TypedDict
+
 from .orbital_calculations import MolecularOrbital, SerializedMolecularOrbital
 
 import numpy as np  
@@ -85,8 +87,17 @@ def percent_heteroatom_difference(mo1: SerializedMolecularOrbital, mo2: Serializ
     return diff
 
 
-def orbital_distance(
-    mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital, inertia_coeff:float=1.
+class OrbitalDistanceKwargs(TypedDict):
+    inertia_coeff:float
+    IPR_coeff:float
+    O_coeff:float
+    N_coeff:float
+    S_coeff:float
+    P_coeff:float
+    radial_distribution_coeff: float
+
+def _mo_distance(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital
+    , inertia_coeff:float=1.
     , IPR_coeff:float=1, O_coeff:float=1
     , N_coeff:float=1, S_coeff:float=1, P_coeff:float=1
     , radial_distribution_coeff: float=1
@@ -97,7 +108,7 @@ def orbital_distance(
     This will likely be a combination of some distance of inertia, inverse part. ratio,
     and percent on heteroatoms: N and O.
 
-    I suspect the most important will be O,N percent, then moment of inertia, then IPR.
+    I suspect the most important will be O,N percent, then moment of inertia.
 
     """
     if inertia_coeff == 0:
@@ -124,6 +135,33 @@ def orbital_distance(
     distance = inertia_diff + IPR_coeff * IPR_diff + heteroatom_diff + radial_distribution_diff
     
     return distance
+    
+
+def orbital_distance(
+    homo1: SerializedMolecularOrbital, lumo1: SerializedMolecularOrbital
+    , homo2: SerializedMolecularOrbital, lumo2: SerializedMolecularOrbital
+    , homo_coeff:float=1.
+    , lumo_coeff:float=1.
+    , orbital_distance_kwargs: OrbitalDistanceKwargs = OrbitalDistanceKwargs(
+            inertia_coeff=1
+            , IPR_coeff=1
+            , O_coeff=1
+            , N_coeff=1
+            , S_coeff=1
+            , P_coeff=1
+            , radial_distribution_coeff= 1
+        )
+    ):
+    if homo_coeff == 0: # avoid calculation time
+        homo_dist = 0
+    else:
+        homo_dist = _mo_distance(homo1, homo2, **orbital_distance_kwargs)
+    if lumo_coeff == 0:
+        lumo_dist = 0
+    else:
+        lumo_dist = _mo_distance(lumo1, lumo2, **orbital_distance_kwargs)
+
+    return ( homo_dist * homo_coeff + lumo_dist * lumo_coeff ) / ( homo_coeff + lumo_coeff )
 
 
 def sort_molecular_orbital_pairs(
