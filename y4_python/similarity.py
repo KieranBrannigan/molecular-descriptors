@@ -519,7 +519,7 @@ def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_ne
     results = np.array((idxs, Y_averages, avg_distances, dE_pred_list, dE_real_list)).T
     np.save(outfile, results)
 
-def plot_testing_metric_results(filestr, x_max: Optional[float]=None):
+def plot_testing_metric_results(filestr, regression:MyRegression, x_max: Optional[float]=None):
     res = np.load(filestr).T
     if x_max:
         results = res.T[np.where(res[2] < x_max)].T
@@ -548,9 +548,21 @@ def plot_testing_metric_results(filestr, x_max: Optional[float]=None):
     h = ax2.hist2d(results[2],abs(results[3]-results[4]), bins=100, cmin=1)
     fig.colorbar(h[3], ax=ax2)
     # ax2.scatter(results[2], results[3]-results[4])
+    ax2.plot(results[2], [regression.rmse for x in range(len(results[2]))], color="red")
 
     ax2.set_xlabel(distance_fun + r", $\overline{D}_{n,k}$")
     ax2.set_ylabel(r"$|\Delta E_{pred} - \Delta E_{real}|$ / eV")
+
+    fig = plt.figure()
+    ax3 = fig.add_subplot()
+    h = ax3.hist2d(results[2],results[3]-results[4], bins=100, cmin=1)
+    fig.colorbar(h[3], ax=ax3)
+    # ax2.scatter(results[2], results[3]-results[4])
+    ax3.plot(results[2], [regression.rmse for x in range(len(results[2]))], color=(1, 0, 0, 0.6))
+    ax3.plot(results[2], [-regression.rmse for x in range(len(results[2]))], color=(1, 0, 0, 0.6))
+
+    ax3.set_xlabel(distance_fun + r", $\overline{D}_{n,k}$")
+    ax3.set_ylabel(r"$\Delta E_{pred} - \Delta E_{real}$ / eV")
 
     plt.show()
 
