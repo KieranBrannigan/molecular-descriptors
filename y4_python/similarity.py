@@ -464,7 +464,7 @@ def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_ne
 
     https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html#sklearn.neighbors.NearestNeighbors.kneighbors
     """
-    all_ = np.array(db.get_all())[:10]
+    all_ = np.array(db.get_all())
     coi = column_of_interest = funColumnMap[distance_fun]
     def metric(i,j):
         # i is array containing idx of a row, j is same of another row, return the distance between those rows based on distance_fun
