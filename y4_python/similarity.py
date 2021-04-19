@@ -728,6 +728,8 @@ if __name__ == "__main__":
     import sys
     ### Pass distance_fun as arg
     distance_fun_str = sys.argv[1]
+    second_distance_str = sys.argv[2]
+    n_neighbours = int(sys.argv[3])
 
     ### Map arg to (distance_fun, kwargs) two-tuple
     distance_fun_map: Mapping[str, Tuple[Callable, dict]] = {
@@ -806,8 +808,8 @@ if __name__ == "__main__":
         )
     }
 
-    n_neighbours = int(sys.argv[2])
     distance_fun, kwargs = distance_fun_map[distance_fun_str]
+    second_distance, second_distance_kwargs = distance_fun_map[second_distance_str]
 
     today = datetime.today()
     print(today)
@@ -870,7 +872,11 @@ if __name__ == "__main__":
     #     )
 
 
-    testing_metric(db, distance_fun_str, distance_fun, resultsDir, n_neighbors=n_neighbours, **kwargs)
+    testing_metric(
+        db, distance_fun_str+"_"+second_distance_str, distance_fun
+        , second_distance, resultsDir, n_neighbors=n_neighbours
+        , distance_fun_kwargs=kwargs, second_distance_kwargs=second_distance_kwargs
+    )
     # for distance_fun, kwargs in [(orbital_distance, {}), (structural_distance, {})]:
     # for distance_fun, kwargs in [(structural_distance, {})]:
         
