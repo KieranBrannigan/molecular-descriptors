@@ -464,7 +464,7 @@ def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_ne
 
     https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html#sklearn.neighbors.NearestNeighbors.kneighbors
     """
-    all_ = np.array(db.get_all())
+    all_ = np.array(db.get_all())[:10]
     coi = column_of_interest = funColumnMap[distance_fun]
     def metric(i,j):
         # i is array containing idx of a row, j is same of another row, return the distance between those rows based on distance_fun
@@ -673,12 +673,17 @@ if __name__ == "__main__":
     distance_fun_map: Mapping[str, Tuple[Callable, dict]] = {
         "inertia_distance": (
             orbital_distance, {
-                "inertia_coeff":1
-                , "IPR_coeff":0
-                , "O_coeff": 0
-                , "N_coeff": 0
-                , "S_coeff": 0
-                , "P_coeff": 0
+                "homo_coeff" : 1.0
+                , "lumo_coeff": 1.0
+                , "orbital_distance_kwargs": OrbitalDistanceKwargs(
+                    inertia_coeff=1
+                    , IPR_coeff=0
+                    , O_coeff= 0
+                    , N_coeff= 0
+                    , S_coeff= 0
+                    , P_coeff= 0
+                    , radial_distribution_coeff=0
+                )
             }
         )
         , "structural_distance": (
@@ -726,13 +731,17 @@ if __name__ == "__main__":
         )
         , "radial_distribution_distance": (
             orbital_distance, {
-                "inertia_coeff":0
-                , "IPR_coeff":0
-                , "O_coeff": 0
-                , "N_coeff": 0
-                , "S_coeff": 0
-                , "P_coeff": 0
-                , "radial_distribution_coeff": 1
+                "homo_coeff" : 1.0
+                , "lumo_coeff": 1.0
+                , "orbital_distance_kwargs": OrbitalDistanceKwargs(
+                    inertia_coeff=0
+                    , IPR_coeff=0
+                    , O_coeff= 0
+                    , N_coeff= 0
+                    , S_coeff= 0
+                    , P_coeff= 0
+                    , radial_distribution_coeff=1
+                )
             }
         )
     }
