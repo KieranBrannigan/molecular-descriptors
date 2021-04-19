@@ -454,7 +454,11 @@ def avg_distance_of_k_neighbours(k, db:DB, distance_fun: Callable, resultsDir, a
         plt.show()
     return (distances, k)
 
-def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_neighbors=5, **distance_fun_kwargs):
+def testing_metric(
+    db: DB, funname, distance_fun: Callable, second_distance:Callable
+    , resultsDir:str, n_neighbors=5, distance_fun_kwargs:dict={}
+    , second_distance_kwargs:dict={}
+    ):
     """
     For each point i, in the dataset, calculate the k nearest neighbours to that point based on the 
     given distance metric (e.g. orbital inertia distance). Then for each nearest neighbour, n_k, calculate
@@ -466,6 +470,7 @@ def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_ne
     """
     all_ = np.array(db.get_all())
     coi = column_of_interest = funColumnMap[distance_fun]
+    second_coi = funColumnMap[second_distance]
     def metric(i,j):
         # i is array containing idx of a row, j is same of another row, return the distance between those rows based on distance_fun
         i = all_[int(i[0])]
@@ -484,6 +489,7 @@ def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_ne
     avg_distances = []
     dE_pred_list = []
     dE_real_list = []
+    avg_second_distance_list = []
     for idx, distances in enumerate(all_distances):
         indices = all_indices[idx]
 
@@ -494,11 +500,28 @@ def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_ne
 
 
         avg_distance = np.mean(distances)
-        _, i_pm7, i_blyp, *_ = all_[idx]
+        _, i_pm7, i_blyp, i_smiles, i_fp, i_homo, i_lumo = all_[idx]
         dE_i = regression.distance_from_regress(i_pm7, i_blyp)
         dE_real_list.append(dE_i)
         neighbor_rows = all_[indices]
         
+        dE_k_list = []
+        second_distance_list = []
+        for row in neighbor_rows:
+            dE_k_list.append(
+                regression.distance_from_regress(row[1], row[2])
+            )
+            # Calc second_distance
+            second_distance_list.append(
+                second_distance(
+                    row[second_coi[0]:second_coi[1]]
+                    , row[second_coi[0]:second_coi[1]]
+                    , **second_distance_kwargs
+                )
+            )
+        avg_second_distance_list.append(sum(second_distance_list)/len(second_distance_list))
+        
+
         dE_k_list = [regression.distance_from_regress(row[1], row[2]) for row in neighbor_rows]
 
         dE_pred = np.mean(dE_k_list, dtype=np.float64) #type:ignore
@@ -516,7 +539,7 @@ def testing_metric(db: DB, funname, distance_fun: Callable, resultsDir:str, n_ne
     outDir = resultsDir
     create_dir_if_not_exists(outDir)
     outfile = os.path.join(outDir, funname + ".npy")
-    results = np.array((idxs, Y_averages, avg_distances, dE_pred_list, dE_real_list)).T
+    results = np.array((idxs, Y_averages, avg_distances, dE_pred_list, dE_real_list, avg_second_distance_list)).T
     np.save(outfile, results)
 
 def plot_testing_metric_results(filestr, regression:MyRegression, x_max: Optional[float]=None):
@@ -566,6 +589,31 @@ def plot_testing_metric_results(filestr, regression:MyRegression, x_max: Optiona
 
     plt.show()
 
+def plot_metric_test_threshold(filestr, regression:MyRegression, db:DB, second_distance: Callable, second_threshold:float, x_max: Optional[float]=None, y_min: float=0.0):
+    """
+    Same as plot_testing_metric_results_above, but it plots in a different colour
+    if the second_distance is above second_threshold
+    """
+
+    res = np.load(filestr).T
+    if x_max:
+        results = res.T[np.where(res[2] < x_max & res[3]-res[4] > y_min)].T
+    else:
+        results = res
+
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    # h = ax3.hist2d(results[2],results[3]-results[4], bins=100, cmin=1)
+    # fig.colorbar(h[3], ax=ax3)
+
+    colours = distances > second_threshold
+    ax.scatter(results[2], results[3]-results[4], s=0.01, c=colours)
+    ax.plot(results[2], [regression.rmse for x in range(len(results[2]))], color=(1, 0, 0, 0.6))
+    ax.plot(results[2], [-regression.rmse for x in range(len(results[2]))], color=(1, 0, 0, 0.6))
+
+    ax.set_xlabel(r"$\overline{D}_{n,k}$")
+    ax.set_ylabel(r"$\Delta E_{pred} - \Delta E_{real}$ / eV")
+    
 
 def get_small_D_large_Y_from_metric_results(results_file: str, distance_fun, how_many_you_want: int, db:DB,  y_min: float = 1.0, **distance_fun_kwargs):
     """
