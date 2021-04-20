@@ -28,6 +28,7 @@ from typing import Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequenc
 import json
 import math
 from itertools import combinations
+from joblib.disk import RM_SUBDIRS_N_RETRY
 
 from matplotlib.figure import Figure
 
@@ -87,11 +88,22 @@ class SerializedMolecularOrbital(TypedDict):
     percent_on_P: float
     radial_distribution: List[float]
 
+class RDF_Kwargs(TypedDict):
+    r_min:float
+    r_max:float
+    r_step:float
+    sigma:float
+
+class MO_Kwargs(TypedDict):
+    molecule_name:str
+    weight_scaling_factor:float
+    radial_distribution_kwargs: RDF_Kwargs
+
 class MolecularOrbital:
     HOMO: int = -1
     LUMO: int = -2
 
-    def __init__(self, mo: MolecularOrbitalDict, atomic_coords: AtomicCoords, molecule_name:str="N/A", mo_number:int=0, weight_scaling_factor=1, radial_distribution_kwargs: dict = {}):
+    def __init__(self, mo: MolecularOrbitalDict, atomic_coords: AtomicCoords, molecule_name:str="N/A", mo_number:int=0, weight_scaling_factor=1, radial_distribution_kwargs: Union[dict,RDF_Kwargs] = {}):
         self.mo = mo
         self.atomic_coords = atomic_coords
         self._masses: Optional[List[PointMass]] = None
@@ -174,7 +186,7 @@ class MolecularOrbital:
         return self._percent_on_P
 
     @classmethod
-    def fromJsonFile(cls, orbital_file: str, mo_number: int, **kwargs) -> 'MolecularOrbital':
+    def fromJsonFile(cls, orbital_file: str, mo_number: int, kwargs:Union[MO_Kwargs,dict]={}) -> 'MolecularOrbital':
         with open(orbital_file, 'r') as JsonFile:
             content = json.load(JsonFile)
 
@@ -184,7 +196,6 @@ class MolecularOrbital:
                 mo_number = homo_num
             elif mo_number == cls.LUMO:
                 mo_number = lumo_num
-
 
         homo_dict: MolecularOrbitalDict = content[str(mo_number)]
         atom_coords: AtomicCoords = content["atomic_coords"]
