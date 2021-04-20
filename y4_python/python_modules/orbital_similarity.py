@@ -9,7 +9,10 @@ from .orbital_calculations import MolecularOrbital, SerializedMolecularOrbital
 import numpy as np  
 
 
-def inertia_difference(moments1: Union[Sequence[float], Tuple[float, float, float]], moments2: Union[Sequence[float], Tuple[float, float, float]], ) -> float:
+def inertia_difference(
+    moments1: Union[Sequence[float], Tuple[float, float, float]]
+    , moments2: Union[Sequence[float], Tuple[float, float, float]], 
+    ) -> float:
     """
     Calculate some difference between (calculated) two molecular orbitals
     based on their moment of inertia.
@@ -97,10 +100,13 @@ class OrbitalDistanceKwargs(TypedDict):
     radial_distribution_coeff: float
 
 def _mo_distance(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital
-    , inertia_coeff:float
-    , IPR_coeff:float, O_coeff:float
-    , N_coeff:float, S_coeff:float, P_coeff:float
-    , radial_distribution_coeff: float
+    , inertia_coeff:float=0.0
+    , IPR_coeff:float=0.0
+    , O_coeff:float=0.0
+    , N_coeff:float=0.0
+    , S_coeff:float=0.0
+    , P_coeff:float=0.0
+    , radial_distribution_coeff: float=0.0
     ):
     """
     Compute the Distance between 2 (calculated) molecular orbitals.
