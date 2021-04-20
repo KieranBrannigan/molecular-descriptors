@@ -91,51 +91,53 @@ def get_r_rmse(y_real, y_predicted):
     rmse = math.sqrt(mean_squared_error(y_real, y_predicted))
     return (r, rmse)
 
-def main_chemical_distance(db: DB, k_neighbours, k_folds, metric_params_list: Iterable[MetricParams], weights='distance'):
+def main_chemical_distance(
+        k_neighbours: int
+        , k_folds: int
+        , metric_params: MetricParams
+        , mol_list
+        , pm7_energies
+        , blyp_energies
+        , deviation_list
+        , fingerprint_list
+        , homo_molecular_orbital_list
+        , lumo_molecular_orbital_list
+        , regression: MyRegression
+        , weights='distance'
+    ):
     """
     X = smiles_list
     y = deviation from regress line
 
     """ 
 
-    mol_list = db.get_mol_ids()
-    pm7_energies = db.get_pm7_energies()
-    blyp_energies = db.get_blyp_energies()
-    smiles_list = db.get_smiles()
-    fingerprint_list = db.get_fingerprints()
-    homo_molecular_orbital_list = db.get_homo_molecular_orbitals()
-
-    my_regression = MyRegression(db)
-
-    deviation_list = (list(map(my_regression.distance_from_regress, pm7_energies, blyp_energies)))
 
     X = np.asarray([i for i in range(len(mol_list))]) # input data -> index for each row of the database IE each molecule
     y = np.asarray(deviation_list) # expected output eg regression deviation 
 
     ## Sampling for testing
-    cutoff = None
-    X = X[:cutoff]
-    y = y[:cutoff]
-    pm7_energies = pm7_energies[:cutoff]
-    blyp_energies = blyp_energies[:cutoff]
+    # cutoff = None
+    # X = X[:cutoff]
+    # y = y[:cutoff]
+    # pm7_energies = pm7_energies[:cutoff]
+    # blyp_energies = blyp_energies[:cutoff]
 
     verbose_results = []
     training_start_time = datetime.today()
     start = perf_counter()
-    for metric_params in metric_params_list:
-        metric_params["fingerprint_list"] = fingerprint_list
-        metric_params["molecular_orbital_list"] = homo_molecular_orbital_list
-        y_real, y_predicted, r, rmse = knn(k_neighbors=k_neighbours, k_folds=k_folds, X=X, y=y, metric_params=metric_params, weights=weights)
-        verbose_results.append((y_real, y_predicted, r, rmse, k_neighbours, k_folds, metric_params, training_start_time))
+    y_real, y_predicted, r, rmse = knn(k_neighbors=k_neighbours, k_folds=k_folds, X=X, y=y, metric_params=metric_params, weights=weights)
+    verbose_results = y_real, y_predicted, r, rmse, k_neighbours, k_folds, metric_params, training_start_time
     finish = perf_counter()
-    for row in verbose_results: save_results(*row)
+    save_results(*verbose_results)
     
     print(f"time taken to train = {round(finish - start, ndigits=5)}")
+
+    return y_real, y_predicted, r, rmse
 
 def save_results(y_real:np.ndarray, y_predicted:np.ndarray, r, rmse, k_neighbors:int, k_folds:int, params:MetricParams, training_start_time: date):
     """
     Export y_real,y_predicted in csv format.
-    FileName will be the start time of the training.
+    FileName will be "learning" + the start time of the training.
     We will also output a info file, listing the parameters.
     """
 
@@ -148,7 +150,7 @@ def save_results(y_real:np.ndarray, y_predicted:np.ndarray, r, rmse, k_neighbors
     ### Don't forget to add extension
     info_file_path = verify_filename(fpath + "-info.txt")
     with open(info_file_path, "w") as InfoFile:
-        InfoFile.write(f"r={r}\nrmse={rmse}")
+        InfoFile.write(f"r={r}\nrmse={rmse}\nk_neighbors={k_neighbors}\nk_folds={k_folds}\n")
         InfoFile.writelines([f"{key}={val}\n" for key,val in params.items() if "list" not in key])
 
     npy_fpath = verify_filename(fpath + ".npy")
@@ -166,34 +168,31 @@ def show_results(results_file):
     plt.show()
 
 
-def main(db: DB):
-    metric_params_list: List[MetricParams] = [
-        {
-            "fingerprint_list":[]
-            , "molecular_orbital_list":[]
-            , "c_orbital": 1.0
-            , "inertia_coefficient": 1.0
-            , "IPR_coefficient": 0
-            , "N_coefficient": 0
-            , "O_coefficient": 0
-            , "S_coefficient": 0
-            , "P_coefficient": 0
-            , "c_struct": 0
-        }
-        , {
-            "fingerprint_list":[]
-            , "molecular_orbital_list":[]
-            , "c_orbital": 0.0
-            , "inertia_coefficient": 1.0
-            , "IPR_coefficient": 0
-            , "N_coefficient": 0
-            , "O_coefficient": 0
-            , "S_coefficient": 0
-            , "P_coefficient": 0
-            , "c_struct": 1
-        }
-    ]
-    main_chemical_distance(db=db, k_neighbours=5, k_folds=10, metric_params_list=metric_params_list)
+def main(db: DB, metric_params:MetricParams):
+
+    mol_list = db.get_mol_ids()
+    pm7_energies = db.get_pm7_energies()
+    blyp_energies = db.get_blyp_energies()
+    deviation_list = (list(map(my_regression.distance_from_regress, pm7_energies, blyp_energies)))
+    fingerprint_list = db.get_fingerprints()
+    homo_molecular_orbital_list = db.get_homo_molecular_orbitals()
+    lumo_molecular_orbital_list = db.get_lumo_molecular_orbitals()
+    my_regression = MyRegression(db)
+
+    main_chemical_distance(
+        db=db
+        , k_neighbours=5
+        , k_folds=10
+        , metric_params=metric_params
+        , mol_list=mol_list
+        , pm7_energies=pm7_energies
+        , blyp_energies=blyp_energies
+        , deviation_list=deviation_list
+        , fingerprint_list=fingerprint_list
+        , homo_molecular_orbital_list=homo_molecular_orbital_list
+        , lumo_molecular_orbital_list=lumo_molecular_orbital_list
+        , regression=my_regression
+    )
 
 if __name__ == "__main__":
     import sys
