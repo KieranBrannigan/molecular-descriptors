@@ -98,6 +98,7 @@ def main_chemical_distance(
         , mol_list # our X data
         , deviation_list # our y data
         , weights='distance'
+        , save=True
     ):
     """
     X = smiles_list
@@ -120,7 +121,8 @@ def main_chemical_distance(
     y_real, y_predicted, r, rmse = knn(k_neighbors=k_neighbours, k_folds=k_folds, X=X, y=y, metric_params=metric_params, weights=weights)
     verbose_results = y_real, y_predicted, r, rmse, k_neighbours, k_folds, metric_params, training_start_time
     finish = perf_counter()
-    save_results(*verbose_results)
+    if save:
+        save_results(*verbose_results)
     
     print(f"time taken to train = {round(finish - start, ndigits=5)} seconds.")
 
