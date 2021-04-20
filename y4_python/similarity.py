@@ -474,7 +474,7 @@ def testing_metric(
 
     https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html#sklearn.neighbors.NearestNeighbors.kneighbors
     """
-    all_ = np.array(db.get_all())[:20]
+    all_ = np.array(db.get_all())
     coi = column_of_interest = funColumnMap[distance_fun]
     second_coi = funColumnMap[second_distance]
     def metric(i,j):
