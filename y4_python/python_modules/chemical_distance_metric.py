@@ -20,6 +20,8 @@ class MetricParams(TypedDict):
     then pass kwargs/params to chemical_distance(**params)
     or can be passed to KNN regressor as metric_params=params
     """
+    homo_coeff:float
+    lumo_coeff:float
     fingerprint_list: List[ExplicitBitVect]
     homo_orbital_list: List[SerializedMolecularOrbital]
     lumo_orbital_list: List[SerializedMolecularOrbital]
