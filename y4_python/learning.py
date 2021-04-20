@@ -12,7 +12,7 @@ from random import sample
 
 from sklearn import neighbors
 from sklearn.model_selection import LeaveOneOut, KFold
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_error
 
 from matplotlib import pyplot as plt
 
@@ -88,21 +88,15 @@ def knn(k_neighbors, k_folds, X, y, metric_params, weights='distance'):
 
 def get_r_rmse(y_real, y_predicted):
     r, _ = pearsonr(y_real, y_predicted)
-    rmse = math.sqrt(mean_squared_error(y_real, y_predicted))
+    rmse = mean_absolute_error(y_real, y_predicted)
     return (r, rmse)
 
 def main_chemical_distance(
         k_neighbours: int
         , k_folds: int
         , metric_params: MetricParams
-        , mol_list
-        , pm7_energies
-        , blyp_energies
-        , deviation_list
-        , fingerprint_list
-        , homo_molecular_orbital_list
-        , lumo_molecular_orbital_list
-        , regression: MyRegression
+        , mol_list # our X data
+        , deviation_list # our y data
         , weights='distance'
     ):
     """
@@ -115,12 +109,10 @@ def main_chemical_distance(
     X = np.asarray([i for i in range(len(mol_list))]) # input data -> index for each row of the database IE each molecule
     y = np.asarray(deviation_list) # expected output eg regression deviation 
 
-    ## Sampling for testing
-    # cutoff = None
-    # X = X[:cutoff]
-    # y = y[:cutoff]
-    # pm7_energies = pm7_energies[:cutoff]
-    # blyp_energies = blyp_energies[:cutoff]
+    # Sampling for testing TODO: COMMENT OUT
+    cutoff = 10
+    X = X[:cutoff]
+    y = y[:cutoff]
 
     verbose_results = []
     training_start_time = datetime.today()
@@ -130,7 +122,7 @@ def main_chemical_distance(
     finish = perf_counter()
     save_results(*verbose_results)
     
-    print(f"time taken to train = {round(finish - start, ndigits=5)}")
+    print(f"time taken to train = {round(finish - start, ndigits=5)} seconds.")
 
     return y_real, y_predicted, r, rmse
 
@@ -170,6 +162,7 @@ def show_results(results_file):
 
 def main(db: DB, metric_params:MetricParams):
 
+    my_regression = MyRegression(db)
     mol_list = db.get_mol_ids()
     pm7_energies = db.get_pm7_energies()
     blyp_energies = db.get_blyp_energies()
@@ -177,25 +170,29 @@ def main(db: DB, metric_params:MetricParams):
     fingerprint_list = db.get_fingerprints()
     homo_molecular_orbital_list = db.get_homo_molecular_orbitals()
     lumo_molecular_orbital_list = db.get_lumo_molecular_orbitals()
-    my_regression = MyRegression(db)
 
-    main_chemical_distance(
-        db=db
-        , k_neighbours=5
+    metric_params["fingerprint_list"] = fingerprint_list
+    metric_params["homo_orbital_list"] = homo_molecular_orbital_list
+    metric_params["lumo_orbital_list"] = lumo_molecular_orbital_list
+
+    return main_chemical_distance(
+        k_neighbours=5
         , k_folds=10
         , metric_params=metric_params
         , mol_list=mol_list
-        , pm7_energies=pm7_energies
-        , blyp_energies=blyp_energies
         , deviation_list=deviation_list
-        , fingerprint_list=fingerprint_list
-        , homo_molecular_orbital_list=homo_molecular_orbital_list
-        , lumo_molecular_orbital_list=lumo_molecular_orbital_list
-        , regression=my_regression
     )
 
 if __name__ == "__main__":
     import sys
+    import json
     db_path = sys.argv[1]
+    params_file = sys.argv[2]
+
+    ### ParamsFile should be object of type MetricParams
+
+    with open(params_file, 'r') as ParamsFile:
+        params = json.load(ParamsFile)
     db = DB(db_path)
-    main(db)
+    y_real, y_pred, r, rmse = main(db, params)
+    print(f"r={r:.4f}, rmse={rmse:.4f}")
