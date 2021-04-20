@@ -818,7 +818,7 @@ if __name__ == "__main__":
     db = DB(db_path)
     regression = MyRegression(db)
     #print(f"rmse={regression.rmse}")
-    resultsDir = os.path.join("results", "11k_molecule_database_eV", f"n_neigh={n_neighbours}", distance_fun_str)
+    resultsDir = os.path.join("results", "11k_molecule_database_eV", distance_fun_str)
 
     # plot_testing_metric_results(
     #     r"results\2021-03-30\11k_molecule_database_eV\n_neigh=1\inertia_distance\inertia_distance.npy"
