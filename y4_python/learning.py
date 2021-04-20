@@ -1,4 +1,4 @@
-from typing import Callable, Iterable, List, Tuple
+from typing import Callable, Iterable, List, Tuple, Union
 import sqlite3
 import math
 from time import perf_counter
