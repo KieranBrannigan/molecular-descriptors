@@ -455,9 +455,14 @@ def avg_distance_of_k_neighbours(k, db:DB, distance_fun: Callable, resultsDir, a
     return (distances, k)
 
 def testing_metric(
-    db: DB, funname, distance_fun: Callable, second_fun_str:str
+    db: DB
+    , funname: str
+    , distance_fun: Callable
+    , second_fun_str:str
     , second_distance:Callable
-    , resultsDir:str, n_neighbors=5, distance_fun_kwargs:dict={}
+    , resultsDir:str
+    , n_neighbors=5
+    , distance_fun_kwargs:dict={}
     , second_distance_kwargs:dict={}
     ):
     """
@@ -469,7 +474,7 @@ def testing_metric(
 
     https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html#sklearn.neighbors.NearestNeighbors.kneighbors
     """
-    all_ = np.array(db.get_all())
+    all_ = np.array(db.get_all())[:20]
     coi = column_of_interest = funColumnMap[distance_fun]
     second_coi = funColumnMap[second_distance]
     def metric(i,j):
@@ -501,22 +506,22 @@ def testing_metric(
 
 
         avg_distance = np.mean(distances)
-        _, i_pm7, i_blyp, i_smiles, i_fp, i_homo, i_lumo = all_[idx]
+        _, i_pm7, i_blyp, i_smiles, i_fp, i_homo, i_lumo = i_row = all_[idx]
         dE_i = regression.distance_from_regress(i_pm7, i_blyp)
         dE_real_list.append(dE_i)
         neighbor_rows = all_[indices]
         
         dE_k_list = []
         second_distance_list = []
-        for row in neighbor_rows:
+        for j_row in neighbor_rows:
             dE_k_list.append(
-                regression.distance_from_regress(row[1], row[2])
+                regression.distance_from_regress(j_row[1], j_row[2])
             )
             # Calc second_distance
             second_distance_list.append(
                 second_distance(
-                    row[second_coi[0]:second_coi[1]]
-                    , row[second_coi[0]:second_coi[1]]
+                    *i_row[second_coi[0]:second_coi[1]] # expand because it will return a np array with the args (1 for structural, 2 for orbital)
+                    , *j_row[second_coi[0]:second_coi[1]]
                     , **second_distance_kwargs
                 )
             )
@@ -539,7 +544,7 @@ def testing_metric(
     # today = datetime.today().strftime("%Y-%m-%d-%H-%M-%S")
     outDir = resultsDir
     create_dir_if_not_exists(outDir)
-    outfile = os.path.join(outDir, funname + "_" + second_fun_str, ".npy")
+    outfile = os.path.join(outDir, funname + "_" + second_fun_str + ".npy")
     results = np.array((idxs, Y_averages, avg_distances, dE_pred_list, dE_real_list, avg_second_distance_list)).T
     np.save(outfile, results)
 
@@ -874,7 +879,7 @@ if __name__ == "__main__":
 
 
     testing_metric(
-        db, distance_fun_str+"_"+second_distance_str, distance_fun
+        db, distance_fun_str, distance_fun
         , second_distance_str, second_distance, resultsDir, n_neighbors=n_neighbours
         , distance_fun_kwargs=kwargs, second_distance_kwargs=second_distance_kwargs
     )
