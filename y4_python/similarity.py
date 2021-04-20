@@ -501,8 +501,17 @@ def testing_metric(
 
         ### Remove the idx and distance due to comparing against itself
         idx_of_self: Tuple = np.where(indices == idx)
-        distances = np.delete(distances, idx_of_self[0][0])
-        indices = np.delete(indices, idx_of_self[0][0])
+        try:
+            distances = np.delete(distances, idx_of_self[0][0])
+            indices = np.delete(indices, idx_of_self[0][0])
+        except Exception as e: # it wasn't a neighbor with itself? Wtf?
+            print(f"""
+                {e}
+                ------
+                {idx, distances}
+                -----------------
+            """)
+
 
 
         avg_distance = np.mean(distances)
