@@ -55,7 +55,7 @@ def hist(x, y, x_label, y_label):
     return fig,ax
     
 
-def knn(k_neighbors, k_folds, X, y, metric_params, weights='distance'):
+def knn(k_neighbors, k_folds, X, y, distance_fun, metric_params, weights='distance'):
 
     if k_folds == -1:
         "Leave-One-Out"
@@ -65,7 +65,7 @@ def knn(k_neighbors, k_folds, X, y, metric_params, weights='distance'):
     y_real = []
 
     # n_jobs = -1, means use all CPUs
-    knn = neighbors.KNeighborsRegressor(k_neighbors, weights=weights, metric=chemical_distance, metric_params=metric_params, n_jobs=1) 
+    knn = neighbors.KNeighborsRegressor(k_neighbors, weights=weights, metric=distance_fun, metric_params=metric_params, n_jobs=1) 
 
     kf = KFold(n_splits=k_folds, shuffle=True)
 
@@ -120,7 +120,7 @@ def main_chemical_distance(
     verbose_results = []
     training_start_time = datetime.today()
     start = perf_counter()
-    y_real, y_predicted, r, rmse = knn(k_neighbors=k_neighbours, k_folds=k_folds, X=X, y=y, metric_params=metric_params, weights=weights)
+    y_real, y_predicted, r, rmse = knn(k_neighbors=k_neighbours, k_folds=k_folds, X=X, y=y, distance_fun=chemical_distance, metric_params=metric_params, weights=weights)
     verbose_results = y_real, y_predicted, r, rmse, k_neighbours, k_folds, metric_params, training_start_time
     finish = perf_counter()
     if save:
