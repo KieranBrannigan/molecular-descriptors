@@ -118,6 +118,12 @@ def verify_filename(filename:str):
     return new_filename + ext
 
 
+def absolute_mean_deviation_from_y_equals_x(x,y):
+    return sum(
+        abs(y[idx] - x[idx]) for idx in range(len(x))
+    ) / len(x)
+    
+
 filenames2smiles = {
     "naphthalene-butyl-anthracene": "C1=CC=CC2=C1C=C3C(=C2)C=CC(=C3)CCCCC4=CC5=C(C=C4)C=CC=C5"
     , "naphthalene": "C1=CC=CC=C1"
