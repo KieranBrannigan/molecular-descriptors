@@ -57,9 +57,12 @@ def hist(x, y, x_label, y_label):
 def euclidean_distance(
     i: np.ndarray
     , j: np.ndarray
+    , metric_params:dict={}
     ):
     "For testing the relative speed of this function with ours"
-    return i[0] - j[0]
+    return sum(
+            (i[idx]-j[idx])**2 for idx in range(len(i))
+        ) ** 0.5
 
 def knn(k_neighbors, k_folds, X, y, distance_fun, metric_params, weights='distance'):
 
@@ -71,7 +74,7 @@ def knn(k_neighbors, k_folds, X, y, distance_fun, metric_params, weights='distan
     y_real = []
 
     # n_jobs = -1, means use all CPUs
-    knn = neighbors.KNeighborsRegressor(k_neighbors, weights=weights, metric=distance_fun, metric_params=metric_params, n_jobs=1) 
+    knn = neighbors.KNeighborsRegressor(k_neighbors, weights=weights, metric=distance_fun, metric_params=metric_params, n_jobs=1, algorithm='brute') 
 
     kf = KFold(n_splits=k_folds, shuffle=True)
 
@@ -98,6 +101,25 @@ def get_r_rmse(y_real, y_predicted):
     r, _ = pearsonr(y_real, y_predicted)
     rmse = mean_absolute_error(y_real, y_predicted)
     return (r, rmse)
+
+def main_euclidean_distance(
+    k_neighbours: int
+        , k_folds: int
+        , metric_params: dict
+        , mol_list # our X data
+        , deviation_list # our y data
+        , weights='distance'
+    ):
+
+    X = np.asarray([i for i in range(len(mol_list))]) # input data -> index for each row of the database IE each molecule
+    y = np.asarray(deviation_list) # expected output eg regression deviation 
+
+    start = perf_counter()
+    y_real, y_predicted, r, rmse = knn(k_neighbors=k_neighbours, k_folds=k_folds, X=X, y=y, distance_fun=euclidean_distance, metric_params=metric_params, weights=weights)
+    finish = perf_counter()
+    print(f"time taken to train = {round(finish - start, ndigits=5)} seconds.")
+
+    return y_real, y_predicted, r, rmse
 
 def main_chemical_distance(
         k_neighbours: int
