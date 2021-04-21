@@ -48,7 +48,7 @@ def inertia_difference(
     ### 1/cos(x) = |a||b| / (a.b)
     ### ( |a||b| / (a.b) )^2 = 1/cos^2(x) , which ranges between 0->1
 
-def radial_distribution_difference(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital):
+def radial_distribution_difference(RDF1: List[float], RDF2: List[float]):
     """
     Radial Distribution is a vector of points, corresponding to f(r) for a specific range of r values.
       i.e. the vector [f(r) for r in np.arange(rmin,rmax,rstep)]
@@ -56,12 +56,9 @@ def radial_distribution_difference(mo1: SerializedMolecularOrbital, mo2: Seriali
     This returns the norm (magnitude) of the difference of the two vectors.
     """
 
-    dist1 = mo1["radial_distribution"]
-    dist2 = mo2["radial_distribution"]
-
-    return sum(
-        ( abs(dist1[idx] - dist2[idx]) for idx in range(len(dist1)) )
-    )
+    RDF1 = np.array(RDF1)
+    RDF2 = np.array(RDF2)
+    return np.linalg.norm(RDF1 - RDF2)
 
 
 
@@ -127,10 +124,10 @@ def _mo_distance(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbita
     if heteroatom_coeff_sum == 0:
         heteroatom_diff = 0
     else:
-        O_diff = percent_heteroatom_difference(mo1, mo2, "O")
-        N_diff = percent_heteroatom_difference(mo1, mo2, "N")
-        S_diff = percent_heteroatom_difference(mo1, mo2, "S")
-        P_diff = percent_heteroatom_difference(mo1, mo2, "P")
+        O_diff = percent_heteroatom_difference(mo1, mo2, "O") if O_coeff > 0 else 0 # avoid unnecessary computation
+        N_diff = percent_heteroatom_difference(mo1, mo2, "N") if N_coeff > 0 else 0
+        S_diff = percent_heteroatom_difference(mo1, mo2, "S") if S_coeff > 0 else 0
+        P_diff = percent_heteroatom_difference(mo1, mo2, "P") if P_coeff > 0 else 0
         heteroatom_diff = ( O_coeff * O_diff + N_coeff * N_diff + S_diff * S_coeff + P_diff * P_coeff )  / heteroatom_coeff_sum
 
     if radial_distribution_coeff == 0:
