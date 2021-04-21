@@ -26,7 +26,7 @@ from typing_extensions import TypedDict
 
 from rdkit.DataStructs.cDataStructs import ExplicitBitVect
 
-from .python_modules.util import sanitize_without_hypervalencies, create_dir_if_not_exists, verify_filename
+from .python_modules.util import absolute_mean_deviation_from_y_equals_x, sanitize_without_hypervalencies, create_dir_if_not_exists, verify_filename
 from .python_modules.regression import MyRegression
 from .python_modules.orbital_calculations import SerializedMolecularOrbital
 from .python_modules.structural_similarity import structural_distance
@@ -35,13 +35,14 @@ from .python_modules.chemical_distance_metric import chemical_distance, MetricPa
 from .python_modules.database import DB
 
 def plot(x, y, data_label, x_label, y_label,):
-    ax = plt.subplot()
+    fig = plt.figure()
+    ax = fig.add_subplot()
     ax.scatter(x, y, label=data_label)
-    ax.plot(x,x, color='green', label = "y=x")
-    ax.legend()
+    ax.plot(x,x, color='red', label = "y=x")
     ax.set_xlabel(x_label, fontweight='bold')
     ax.set_ylabel(y_label, fontweight='bold')
     plt.tight_layout()
+    return fig,ax
 
 def hist(x, y, x_label, y_label):
     fig = plt.figure()
@@ -51,6 +52,7 @@ def hist(x, y, x_label, y_label):
     ax.set_xlabel(x_label, fontweight='bold')
     ax.set_ylabel(y_label, fontweight='bold')
     plt.tight_layout()
+    return fig,ax
     
 
 def knn(k_neighbors, k_folds, X, y, metric_params, weights='distance'):
@@ -155,10 +157,18 @@ def save_results(y_real:np.ndarray, y_predicted:np.ndarray, r, rmse, k_neighbors
 def show_results(results_file):
     "plot the results from a given file."
     y_real, y_predicted = results = np.load(results_file).T
+
+    reg = linregress(y_real, y_predicted)
     x_label=r'$y_{real} \, / \, eV$'
     y_label=r'$y_{pred} \, / \, eV$'
-    plot(x=y_real, y=y_predicted, data_label="predicted vs real, k=5", x_label=x_label, y_label=y_label)
-    hist(x=y_real, y=y_predicted, x_label=x_label, y_label=y_label)
+    fig1, ax1 = plot(x=y_real, y=y_predicted, data_label="predicted vs real, k=5", x_label=x_label, y_label=y_label)
+    ax1.plot(y_real, reg.slope*y_real+reg.intercept, color=(222/255,129/255,29/255), label="linear regression")
+    ax1.legend()
+    fig2, ax2 = hist(x=y_real, y=y_predicted, x_label=x_label, y_label=y_label)
+    ax2.plot(y_real, reg.slope*y_real+reg.intercept, color=(222/255,129/255,29/255), label="linear regression")
+    ax2.plot(y_real,y_real, color='red', label = "y=x")
+    ax2.legend()
+
     plt.show()
 
 
