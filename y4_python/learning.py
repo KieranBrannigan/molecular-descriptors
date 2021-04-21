@@ -54,6 +54,12 @@ def hist(x, y, x_label, y_label):
     plt.tight_layout()
     return fig,ax
     
+def euclidean_distance(
+    i: np.ndarray
+    , j: np.ndarray
+    ):
+    "For testing the relative speed of this function with ours"
+    return i[0] - j[0]
 
 def knn(k_neighbors, k_folds, X, y, distance_fun, metric_params, weights='distance'):
 
