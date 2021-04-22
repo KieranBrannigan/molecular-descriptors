@@ -34,25 +34,6 @@ from .python_modules.orbital_similarity import orbital_distance
 from .python_modules.chemical_distance_metric import chemical_distance, MetricParams
 from .python_modules.database import DB
 
-def plot(x, y, data_label, x_label, y_label,):
-    fig = plt.figure()
-    ax = fig.add_subplot()
-    ax.scatter(x, y, label=data_label)
-    ax.plot(x,x, color='red', label = "y=x")
-    ax.set_xlabel(x_label, fontweight='bold')
-    ax.set_ylabel(y_label, fontweight='bold')
-    plt.tight_layout()
-    return fig,ax
-
-def hist(x, y, x_label, y_label):
-    fig = plt.figure()
-    ax = fig.add_subplot()
-    h = ax.hist2d(x, y, bins=100, cmin=1)
-    fig.colorbar(h[3], ax=ax)
-    ax.set_xlabel(x_label, fontweight='bold')
-    ax.set_ylabel(y_label, fontweight='bold')
-    plt.tight_layout()
-    return fig,ax
     
 def euclidean_distance(
     i: np.ndarray
@@ -64,7 +45,10 @@ def euclidean_distance(
             (i[idx]-j[idx])**2 for idx in range(len(i))
         ) ** 0.5
 
-def knn(k_neighbors, k_folds, X, y, distance_fun, metric_params, weights='distance'):
+def knn(k_neighbors, k_folds, X, y, distance_fun, metric_params: MetricParams, regression:MyRegression, weights='distance'):
+
+    m_r, c_r = regression.slope, regression.intercept
+    all_ = regression.db.get_all()
 
     if k_folds == -1:
         "Leave-One-Out"
@@ -72,6 +56,7 @@ def knn(k_neighbors, k_folds, X, y, distance_fun, metric_params, weights='distan
 
     y_predicted = []
     y_real = []
+    Eblyp_pred_list = []
 
     # n_jobs = -1, means use all CPUs
     knn = neighbors.KNeighborsRegressor(k_neighbors, weights=weights, metric=distance_fun, metric_params=metric_params, n_jobs=1, algorithm='brute') 
@@ -90,12 +75,23 @@ def knn(k_neighbors, k_folds, X, y, distance_fun, metric_params, weights='distan
         y_predicted.append(y_pred.tolist())
         y_real.append(y_test.tolist())
 
+        def get_blyp_pred(E_pm7, dE_pred):
+
+            return (m_r*E_pm7 + c_r) - dE_pred
+        
+        Eblyp_pred = np.fromiter(
+            ( get_blyp_pred(all_[idx][1], y_pred[idx]) for idx in X_test)
+            , dtype=np.float64
+        )
+        Eblyp_pred_list = np.append(Eblyp_pred_list, Eblyp_pred)
+            
+
     ### Flatten lists with real and predicted values
     y_real = [item for dummy in y_real for item in dummy ]
     y_predicted = [item for dummy in y_predicted for item in dummy ]
     ### Calculate r and rmse metrics
     r, rmse = get_r_rmse(y_real, y_predicted)
-    return (y_real, y_predicted, r, rmse)
+    return (y_real, y_predicted, Eblyp_pred_list, r, rmse)
 
 def get_r_rmse(y_real, y_predicted):
     r, _ = pearsonr(y_real, y_predicted)
@@ -158,7 +154,7 @@ def main_chemical_distance(
 
     return y_real, y_predicted, r, rmse
 
-def save_results(y_real:np.ndarray, y_predicted:np.ndarray, r, rmse, k_neighbors:int, k_folds:int, params:MetricParams, training_start_time: date):
+def save_results(y_real:np.ndarray, y_predicted:np.ndarray, Eblyp_pred_list, r, rmse, k_neighbors:int, k_folds:int, params:MetricParams, training_start_time: date):
     """
     Export y_real,y_predicted in csv format.
     FileName will be "learning" + the start time of the training.
@@ -179,7 +175,7 @@ def save_results(y_real:np.ndarray, y_predicted:np.ndarray, r, rmse, k_neighbors
 
     npy_fpath = verify_filename(fpath + ".npy")
 
-    np.save(npy_fpath, np.array((y_real, y_predicted)).T)
+    np.save(npy_fpath, np.array((y_real, y_predicted, Eblyp_pred_list)).T)
 
 
 def show_results(results_file):
@@ -193,14 +189,33 @@ def show_results(results_file):
     ax1.plot(y_real, reg.slope*y_real+reg.intercept, color=(222/255,129/255,29/255), label="linear regression")
     ax1.legend()
     fig2, ax2 = hist(x=y_real, y=y_predicted, x_label=x_label, y_label=y_label)
-    ax2.plot(y_real, reg.slope*y_real+reg.intercept, color=(222/255,129/255,29/255), label="linear regression")
+    ax2.plot(y_real, (reg.slope*y_real)+reg.intercept, color=(222/255,129/255,29/255), label="linear regression")
     ax2.plot(y_real,y_real, color='red', label = "y=x")
     ax2.legend()
 
     plt.show()
 
+def plot(x, y, data_label, x_label, y_label,):
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    ax.scatter(x, y, label=data_label)
+    ax.plot(x,x, color='red', label = "y=x")
+    ax.set_xlabel(x_label, fontweight='bold')
+    ax.set_ylabel(y_label, fontweight='bold')
+    plt.tight_layout()
+    return fig,ax
 
-def main(db: DB, metric_params:MetricParams):
+def hist(x, y, x_label, y_label):
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    h = ax.hist2d(x, y, bins=100, cmin=1)
+    fig.colorbar(h[3], ax=ax)
+    ax.set_xlabel(x_label, fontweight='bold')
+    ax.set_ylabel(y_label, fontweight='bold')
+    plt.tight_layout()
+    return fig,ax
+
+def main(db: DB, metric_params:MetricParams, save=True):
 
     my_regression = MyRegression(db)
     mol_list = db.get_mol_ids()
@@ -221,6 +236,7 @@ def main(db: DB, metric_params:MetricParams):
         , metric_params=metric_params
         , mol_list=mol_list
         , deviation_list=deviation_list
+        , save=save
     )
 
 if __name__ == "__main__":
