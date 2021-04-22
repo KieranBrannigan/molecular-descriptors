@@ -56,11 +56,9 @@ def radial_distribution_difference(RDF1: List[float], RDF2: List[float]):
     This returns the norm (magnitude) of the difference of the two vectors.
     """
 
-    RDF1 = np.array(RDF1)
-    RDF2 = np.array(RDF2)
-    return np.linalg.norm(RDF1 - RDF2)
-
-
+    return sum(
+        ( abs(RDF1[idx] - RDF2[idx]) for idx in range(len(RDF1)) )
+    )
 
 def IPR_difference(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbital):
     """
@@ -133,7 +131,7 @@ def _mo_distance(mo1: SerializedMolecularOrbital, mo2: SerializedMolecularOrbita
     if radial_distribution_coeff == 0:
         radial_distribution_diff = 0
     else:
-        radial_distribution_diff = radial_distribution_coeff * radial_distribution_difference(mo1, mo2)
+        radial_distribution_diff = radial_distribution_coeff * radial_distribution_difference(mo1["radial_distribution"], mo2["radial_distribution"])
 
     distance = inertia_diff + heteroatom_diff + radial_distribution_diff
     

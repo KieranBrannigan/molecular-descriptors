@@ -84,7 +84,7 @@ def chemical_distance(
     j_lumo = lumo_orbital_list[int(j[0])]
 
     dist_orbital = 0
-    if c_orbital:
+    if c_orbital > 0:
         dist_orbital = c_orbital * orbital_distance(
             i_homo, i_lumo
             , j_homo, j_lumo
@@ -102,7 +102,7 @@ def chemical_distance(
         )
 
     dist_struct = 0
-    if c_struct:
+    if c_struct > 0:
         dist_struct = c_struct * structural_distance(i_fp, j_fp)
 
     return dist_orbital + dist_struct
