@@ -1,5 +1,6 @@
 import os
 from typing import Callable, List, Iterable
+from y4_python.python_modules.orbital_similarity import radial_distribution_difference
 from y4_python.python_modules.structural_similarity import structural_distance
 import numpy as np
 
@@ -91,10 +92,11 @@ def draw_grid_images(array, distance_fun: Callable, outputFile: str, regression:
     """
     images = []
     for distance,x,y in array:
-        x_mol_name, x_pm7, x_blyp, x_smiles, x_fp, x_serialized_homo, x_serialized_lumo = x
-        y_mol_name, y_pm7, y_blyp, y_smiles, y_fp, y_serialized_homo, y_serialized_lumo = y
+        x_mol_name, x_pm7, x_blyp, x_smiles, x_fp, x_homo, x_lumo = x
+        y_mol_name, y_pm7, y_blyp, y_smiles, y_fp, y_homo, y_lumo = y
 
         struct_distance = structural_distance(x_fp, y_fp)
+        RDF_distance = radial_distribution_difference(x_homo,y_homo)
 
         mol_x = Chem.MolFromSmiles(x_smiles)
         mol_y = Chem.MolFromSmiles(y_smiles)
@@ -105,7 +107,7 @@ def draw_grid_images(array, distance_fun: Callable, outputFile: str, regression:
         x_description = x_mol_name + "\n" + f"ΔE = {np.round_(dE_x, decimals=4)} eV"
         y_description = y_mol_name + "\n" + f"ΔE = {np.round_(dE_y, decimals=4)} eV"
 
-        subImgSize = (400, 400)
+        subImgSize = (400, 500)
         img = _MolsToGridImage([mol_x, mol_y],molsPerRow=2,subImgSize=subImgSize)
         #img=Chem.Draw.MolsToGridImage([mol_x, mol_y],molsPerRow=2,subImgSize=(400,400))  
         # fname = join("..","output_mols","least_similar",x[0] + "__" + y[0] + ".png")
@@ -121,8 +123,12 @@ def draw_grid_images(array, distance_fun: Callable, outputFile: str, regression:
             , outline="#000000"
         )
 
-        mFont = ImageFont.truetype("arial", 32)
-        myText = f"{distance_x_label(distance_fun)} = {np.round_(distance, decimals=4)} \nStructural Distance = {np.round_(struct_distance, decimals=4)} \nY_ij = {np.round_(abs(dE_x - dE_y), decimals=4)}"
+        mFont = ImageFont.truetype("arial", 28)
+        myText = f"""
+D_Inertia = {distance:.4f} 
+Structural Distance = {struct_distance:.4f}
+D_RDF = {RDF_distance:.4f}
+Y_ij = {abs(dE_x - dE_y):.4f}"""
         w,h = draw.textsize(myText, mFont)
         draw.text(
             (W-w/2, 0),myText,(0,0,0), font=mFont
@@ -130,12 +136,12 @@ def draw_grid_images(array, distance_fun: Callable, outputFile: str, regression:
         
         mediumFont = ImageFont.truetype("arial", 24)
         draw.text(
-            (100, 340)
+            (100, 390)
             , x_description
             , (82,82,82)
             , font=mediumFont)
         draw.text(
-            (500, 340)
+            (500, 390)
             , y_description
             , (82,82,82)
             , font=mediumFont)

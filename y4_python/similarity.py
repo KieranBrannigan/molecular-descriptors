@@ -4,6 +4,7 @@ from os.path import join
 import itertools
 from typing import Any, Callable, List, Mapping, Optional, Tuple, Union
 from datetime import datetime
+
 from y4_python.python_modules.orbital_calculations import SerializedMolecularOrbital
 
 from rdkit import Chem, DataStructs
@@ -15,7 +16,11 @@ from scipy.stats import linregress
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import mean_absolute_error
 
+import matplotlib as mpl
 from matplotlib import pyplot as plt
+import matplotlib.patheffects as pe
+import matplotlib.colors as mcolors
+css4_colors:dict = mcolors.CSS4_COLORS
 import seaborn as sns
 
 from PIL import Image
@@ -25,7 +30,7 @@ from PIL import ImageDraw
 from .python_modules.draw_molecule import SMILEStoFiles, concat_images, draw_grid_images, resize_image
 from .python_modules.database import DB
 from .python_modules.regression import MyRegression
-from .python_modules.util import create_dir_if_not_exists, density_scatter, scale_array, distance_x_label
+from .python_modules.util import create_dir_if_not_exists, density_scatter, plot_medians_iqr, scale_array, distance_x_label
 from .python_modules.orbital_similarity import OrbitalDistanceKwargs, orbital_distance
 from .python_modules.structural_similarity import structural_distance
 from .algorithm_testing import algo
@@ -504,7 +509,10 @@ def testing_metric(
         try:
             distances = np.delete(distances, idx_of_self[0][0])
             indices = np.delete(indices, idx_of_self[0][0])
-        except Exception as e: # it wasn't a neighbor with itself? Wtf?
+
+        # it wasn't a neighbor with itself? Wtf? 
+        # When this happens its always neighbors with 0,0,0,0,0 
+        except Exception as e: 
             print(f"""
                 {e}
                 ------
@@ -577,9 +585,27 @@ def plot_testing_metric_results(filestr, regression:MyRegression, x_max: Optiona
     h = ax.hist2d(results[2],results[1], bins=100, cmin=1)
     fig.colorbar(h[3], ax=ax)
     # ax.scatter(results[2], results[1])
+    ax.plot(results[2], [regression.rmse for x in range(len(results[2]))], color=(1, 0, 0, 0.6))
 
-    ax.set_xlabel(distance_fun + r", $\overline{D}_{n,k}$")
+    ax.set_xlabel(r"$\overline{D}\,^{S}_{n,k}$")
     ax.set_ylabel(r"$\overline{Y}_{n,k}$ / eV")
+
+    ### TODO: plot medians and IQR (please work...)
+            
+    ### To get a step of size s, number of steps n (3rd arg) should be n= 1 + int( (max-min)/s )
+    ### **NB if endpoint==False, then remove `1+` -> n=int( (min-max)/s )
+    bins = np.concatenate(
+        (
+            np.linspace(0.1, 0.6, 1+int((0.6-0.1)/0.02))
+            ,# np.linspace(0.4, 0.6, 1+int((0.6-0.4)/0.05))
+        )
+    )
+    X, Q1, Q2, Q3 = plot_medians_iqr(results[2], results[1], bins=bins)
+    alpha = 0.7
+    path_effects_border = [pe.Stroke(linewidth=3, foreground='black', alpha=alpha), pe.Normal()]
+    ax.plot(X, Q1, linewidth=2.0, path_effects=path_effects_border, c="orangered", alpha=alpha)
+    ax.plot(X, Q2, linewidth=2.0, path_effects=path_effects_border, c="thistle", alpha=alpha)
+    ax.plot(X, Q3, linewidth=2.0, path_effects=path_effects_border, c="orange", alpha=alpha)
 
     fig = plt.figure()
     ax2 = fig.add_subplot()
@@ -604,7 +630,7 @@ def plot_testing_metric_results(filestr, regression:MyRegression, x_max: Optiona
 
     plt.show()
 
-def plot_metric_test_threshold(filestr, regression:MyRegression, db:DB, second_distance: Callable, second_threshold:float, x_max: Optional[float]=None, y_min: float=0.0):
+def plot_metric_test_threshold(filestr, regression:MyRegression, db:DB, second_threshold:float, x_max: Optional[float]=None, y_min: float=0.0):
     """
     Same as plot_testing_metric_results_above, but it plots in a different colour
     if the second_distance is above second_threshold
@@ -612,22 +638,43 @@ def plot_metric_test_threshold(filestr, regression:MyRegression, db:DB, second_d
 
     res = np.load(filestr).T
     if x_max:
-        results = res.T[np.where(res[2] < x_max & res[3]-res[4] > y_min)].T
+        results = res.T[np.where(res[2] < x_max)].T
     else:
         results = res
 
     fig = plt.figure()
     ax = fig.add_subplot()
-    # h = ax3.hist2d(results[2],results[3]-results[4], bins=100, cmin=1)
-    # fig.colorbar(h[3], ax=ax3)
+    h = ax.hist2d(results[2],results[1], bins=100, cmin=1)
+    fig.colorbar(h[3], ax=ax)
 
-    colours = distances > second_threshold
-    ax.scatter(results[2], results[3]-results[4], s=0.01, c=colours)
-    ax.plot(results[2], [regression.rmse for x in range(len(results[2]))], color=(1, 0, 0, 0.6))
-    ax.plot(results[2], [-regression.rmse for x in range(len(results[2]))], color=(1, 0, 0, 0.6))
+    above = above_second_distance_threshold = results[np.where(results.T[5] > second_threshold)].T
 
-    ax.set_xlabel(r"$\overline{D}_{n,k}$")
-    ax.set_ylabel(r"$\Delta E_{pred} - \Delta E_{real}$ / eV")
+    results = results.T[np.where(results[5] > 0.8)].T
+
+    colours = scale_array(results[5], 0, 1)
+
+    fig2 = plt.figure()
+    ax2 = fig2.add_subplot()
+
+    scatter = ax2.scatter(results[2], results[3]-results[4], s=40, c=colours)
+    fig.colorbar(scatter, ax=ax2)
+    ax2.plot(results[2], [regression.rmse for x in range(len(results[2]))], color=(1, 0, 0, 0.6))
+    ax2.plot(results[2], [-regression.rmse for x in range(len(results[2]))], color=(1, 0, 0, 0.6))
+
+    #ax.scatter(above[2], above[3]-above[4], c="red", s=0.01)
+
+    ax2.set_xlabel(r"$\overline{D}_{n,k}$")
+    ax2.set_ylabel(r"$\Delta E_{pred} - \Delta E_{real}$ / eV")
+
+    # hist of D_RDF for points outside rmse,
+    resT = results.T
+    out = resT[np.where(abs(resT[3]-resT[4]) > regression.rmse)].T
+
+    fig3 = plt.figure()
+    ax3 = fig3.add_subplot()
+    ax3.hist(out[5], bins=100)
+
+    plt.show()
     
 
 def get_small_D_large_Y_from_metric_results(results_file: str, distance_fun, how_many_you_want: int, db:DB,  y_min: float = 1.0, **distance_fun_kwargs):
@@ -839,6 +886,15 @@ if __name__ == "__main__":
     #     , x_max=0.03
     # )
 
+    plot_metric_test_threshold(
+        r"results\11k_molecule_database_eV\structural_distance\structural_distance_radial_distribution_distance.npy"
+        , regression
+        , db
+        , 1.0
+        , x_max=None
+        , 
+    )
+
     # low_D_large_Y = get_small_D_large_Y_from_metric_results(
     #     r"results\2021-03-30\11k_molecule_database_eV\n_neigh=1\inertia_distance\inertia_distance.npy"
     #     , orbital_distance
@@ -847,7 +903,7 @@ if __name__ == "__main__":
     #     , y_min=1.0
     #     , **{
     #         "homo_coeff" : 1.0
-    #         , "lumo_coeff": 1.0
+    #         , "lumo_coeff": 0.0
     #         , "orbital_distance_kwargs": OrbitalDistanceKwargs(
     #             inertia_coeff=1
     #             , IPR_coeff=0
@@ -887,11 +943,11 @@ if __name__ == "__main__":
     #     )
 
 
-    testing_metric(
-        db, distance_fun_str, distance_fun
-        , second_distance_str, second_distance, resultsDir, n_neighbors=n_neighbours
-        , distance_fun_kwargs=kwargs, second_distance_kwargs=second_distance_kwargs
-    )
+    #testing_metric(
+    #     db, distance_fun_str, distance_fun
+    #     , second_distance_str, second_distance, resultsDir, n_neighbors=n_neighbours
+    #     , distance_fun_kwargs=kwargs, second_distance_kwargs=second_distance_kwargs
+    # )
     # for distance_fun, kwargs in [(orbital_distance, {}), (structural_distance, {})]:
     # for distance_fun, kwargs in [(structural_distance, {})]:
         

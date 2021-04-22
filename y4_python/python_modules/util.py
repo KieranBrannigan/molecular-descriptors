@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from typing import Callable, Union, overload
+from typing import Callable, Iterable, List, Optional, Tuple, Union, overload
 
 from rdkit.Chem import Mol, SanitizeFlags, SanitizeMol, MolFromSmiles, RDKFingerprint
 from rdkit.Chem.AllChem import GetMorganFingerprint
@@ -123,6 +123,57 @@ def absolute_mean_deviation_from_y_equals_x(x,y):
         abs(y[idx] - x[idx]) for idx in range(len(x))
     ) / len(x)
     
+
+def plot_medians_iqr(X_data, Y_data, bins: Union[List[float], np.ndarray]) -> Tuple[List[float], List[float], List[float], List[float]]:
+    '''
+
+    Example:
+        X_data = ...
+        Y_data = ...
+        data = np.array([X,Y]).T  # [[x1,y1], [x2,y2],...]
+        X, Q1, Q2, Q3 = plot_medians_iqr(data)
+        plt.plot(X, Q1)
+        plt.plot(X, Q2)
+        plt.plot(X, Q3)
+
+    Given data in X and Y, we will split into bins along X. 
+    Then for each bin, we calculate the Q1 (lower quartile), Q2 (median), and Q3 (upper quartile).
+    We then produce a plot, where X is the middle of the bins and Y contains 3 line plots, one for 
+    each of Q1, Q2 and Q3.
+
+    As far as I know 'doane' is the best algorithm for bins.
+    It might take a while but thats fine.
+    The more bins there are the smoother the plot should look, although if the bins are too
+    small, then there won't be a significant Y distribution within that range.
+
+    ------------
+    Returns:
+        X: List (middle of each bin)
+        Q1_list:    List of lower quartiles
+        Q2_list:    List of medians
+        Q3_list:    List if upper quartiles
+
+    '''
+
+    X_out = [] # middle of the bins
+    Q1_list = []
+    Q2_list = []
+    Q3_list = []
+    for i in range(len(bins)-1):
+        bin = (bins[i], bins[i+1])
+        data_slice = Y_data[(bin[0] < X_data) & (X_data < bin[1])] # get a slice of data for our bin range
+        ### TODO: handle if the data_slice is empty.
+        if not data_slice.any():
+            continue
+        Q1 = np.percentile(data_slice, 25)
+        Q2 = np.percentile(data_slice, 50)
+        Q3 = np.percentile(data_slice, 75)
+        X_out.append(sum(bin)/len(bin)) 
+        Q1_list.append(Q1)
+        Q2_list.append(Q2)
+        Q3_list.append(Q3)
+
+    return X_out, Q1_list, Q2_list, Q3_list
 
 filenames2smiles = {
     "naphthalene-butyl-anthracene": "C1=CC=CC2=C1C=C3C(=C2)C=CC(=C3)CCCCC4=CC5=C(C=C4)C=CC=C5"

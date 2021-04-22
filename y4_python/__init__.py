@@ -149,7 +149,7 @@ def plot_all_radial_dist(radial_distribution_kwargs, outDir=False):
         X,F = homo.radial_dist_func(**radial_distribution_kwargs)
         fig = plt.figure()
         ax = fig.add_subplot()
-        ax.plot(X,F)
+        ax.bar(X,F)
         #ax.set_title(homo.molecule_name + f", {radial_distribution_kwargs}")
         ax.set_xlabel(r"$X_{RDF}$ / $\AA$")
         ax.set_ylabel(r"$F_{RDF}$ / $E_h\,^2$")
@@ -192,7 +192,7 @@ if __name__ == "__main__":
     import numpy as np
     from scipy.stats import linregress
 
-    #plot_all_radial_dist({}, r"D:\OneDrive - The University of Liverpool(1)\Uni\Y4 Project\WritingUp\DescriptorTesting\RadialDist")
+    plot_all_radial_dist({})
 
     # print_sorted_orbital_pairs(
     #     {
