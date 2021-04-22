@@ -56,10 +56,10 @@ def knn(k_neighbors, k_folds, X, y, distance_fun, metric_params: MetricParams, r
 
     y_predicted = []
     y_real = []
-    Eblyp_pred_list = []
+    Eblyp_pred_list = np.array([])
 
     # n_jobs = -1, means use all CPUs
-    knn = neighbors.KNeighborsRegressor(k_neighbors, weights=weights, metric=distance_fun, metric_params=metric_params, n_jobs=1, algorithm='brute') 
+    knn = neighbors.KNeighborsRegressor(k_neighbors, weights=weights, metric=distance_fun, metric_params=metric_params, n_jobs=1) 
 
     kf = KFold(n_splits=k_folds, shuffle=True)
 
@@ -80,9 +80,13 @@ def knn(k_neighbors, k_folds, X, y, distance_fun, metric_params: MetricParams, r
             return (m_r*E_pm7 + c_r) - dE_pred
         
         Eblyp_pred = np.fromiter(
-            ( get_blyp_pred(all_[idx][1], y_pred[idx]) for idx in X_test)
+            ( get_blyp_pred(all_[int(row_idx)][1], y_pred[int(idx)]) for idx, row_idx in enumerate(X_test[:,0]) )
             , dtype=np.float64
         )
+        # for idx, row_idx in enumerate(X_test[:,0]):
+        #     e = get_blyp_pred(all_[int(row_idx)][1], y_pred[int(idx)])
+        #     Eblyp_pred = np.append(Eblyp_pred, e)
+
         Eblyp_pred_list = np.append(Eblyp_pred_list, Eblyp_pred)
             
 
@@ -102,6 +106,7 @@ def main_euclidean_distance(
     k_neighbours: int
         , k_folds: int
         , metric_params: dict
+        , regression:MyRegression
         , mol_list # our X data
         , deviation_list # our y data
         , weights='distance'
@@ -111,7 +116,7 @@ def main_euclidean_distance(
     y = np.asarray(deviation_list) # expected output eg regression deviation 
 
     start = perf_counter()
-    y_real, y_predicted, r, rmse = knn(k_neighbors=k_neighbours, k_folds=k_folds, X=X, y=y, distance_fun=euclidean_distance, metric_params=metric_params, weights=weights)
+    y_real, y_predicted, r, rmse = knn(k_neighbors=k_neighbours, k_folds=k_folds, X=X, y=y, distance_fun=euclidean_distance, metric_params=metric_params, regression=regression, weights=weights)
     finish = perf_counter()
     print(f"time taken to train = {round(finish - start, ndigits=5)} seconds.")
 
@@ -121,6 +126,7 @@ def main_chemical_distance(
         k_neighbours: int
         , k_folds: int
         , metric_params: MetricParams
+        , regression: MyRegression
         , mol_list # our X data
         , deviation_list # our y data
         , weights='distance'
@@ -144,8 +150,8 @@ def main_chemical_distance(
     verbose_results = []
     training_start_time = datetime.today()
     start = perf_counter()
-    y_real, y_predicted, r, rmse = knn(k_neighbors=k_neighbours, k_folds=k_folds, X=X, y=y, distance_fun=chemical_distance, metric_params=metric_params, weights=weights)
-    verbose_results = y_real, y_predicted, r, rmse, k_neighbours, k_folds, metric_params, training_start_time
+    y_real, y_predicted, Eblyp_pred_list, r, rmse = knn(k_neighbors=k_neighbours, k_folds=k_folds, X=X, y=y, distance_fun=chemical_distance, metric_params=metric_params, regression=regression, weights=weights)
+    verbose_results = y_real, y_predicted, Eblyp_pred_list, r, rmse, k_neighbours, k_folds, metric_params, training_start_time
     finish = perf_counter()
     if save:
         save_results(*verbose_results)
@@ -215,7 +221,7 @@ def hist(x, y, x_label, y_label):
     plt.tight_layout()
     return fig,ax
 
-def main(db: DB, metric_params:MetricParams, save=True):
+def main(db: DB, metric_params:MetricParams, regression:MyRegression, save=True):
 
     my_regression = MyRegression(db)
     mol_list = db.get_mol_ids()
@@ -234,6 +240,7 @@ def main(db: DB, metric_params:MetricParams, save=True):
         k_neighbours=5
         , k_folds=10
         , metric_params=metric_params
+        , regression=regression
         , mol_list=mol_list
         , deviation_list=deviation_list
         , save=save
@@ -250,5 +257,6 @@ if __name__ == "__main__":
     with open(params_file, 'r') as ParamsFile:
         params = json.load(ParamsFile)
     db = DB(db_path)
-    y_real, y_pred, r, rmse = main(db, params)
+    regression = MyRegression(db)
+    y_real, y_pred, r, rmse = main(db, params, regression, save=True)
     print(f"r={r:.4f}, rmse={rmse:.4f}")
