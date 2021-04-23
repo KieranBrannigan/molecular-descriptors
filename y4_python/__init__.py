@@ -16,7 +16,6 @@ from .python_modules.orbital_similarity import radial_distribution_difference, s
 from .python_modules.structural_similarity import structural_distance
 from .python_modules.orbital_calculations import MolecularOrbital
 
-from .learning import main as learning_main
 
 print("__init__.py called.")
 
