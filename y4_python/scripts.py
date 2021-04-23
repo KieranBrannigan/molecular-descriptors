@@ -1,3 +1,4 @@
+from matplotlib import pyplot as plt
 from y4_python.python_modules.orbital_similarity import OrbitalDistanceKwargs, orbital_distance
 import numpy as np
 from timeit import timeit
@@ -47,25 +48,29 @@ def re_arrange_learning_results(results_file):
     res = np.load(results_file) # [[y_real, y_pred], [...], ...]
     db = DB("y4_python/11k_molecule_database_eV.db")
     regression = MyRegression(db)
+    m_r, c_r = regression.slope, regression.intercept
     all_ = db.get_all()
-    new_results = np.array([])
-    dEs = np.fromiter(
-        ( regression.distance_from_regress(row[1], row[2]) for row in all_ )
+
+    def get_Eblyp(row_idx, dE_pred):
+        _, i_pm7, *_ = all_[row_idx]
+        return (m_r*i_pm7 + c_r) - dE_pred
+        
+    res = res[np.argsort(res[:,0])]
+
+    E_blyp_pred = np.fromiter(
+        ( get_Eblyp(res[idx][0], res[idx][2]) for idx in range(len(res)) )
         , dtype=np.float64
     )
 
-    #found_idxs = np.where(res == dEs)
-    for idx, row in enumerate(all_):
-        i_mol_id, i_pm7, i_blyp, i_smiles, i_fp, i_homo, i_lumo = row
-        dE = regression.distance_from_regress(i_pm7, i_blyp)
-        found_idxs, column_nums = np.where(res == dE)
-        if len(found_idxs) > 1:
-            print("too big")
-        if len(np.where(new_results == dE)[0]) > 0:
-            continue
-        new_results =np.append(new_results, res[found_idxs])
+    array_all = np.array(all_)
+    fig = plt.figure()
+    ax = fig.add_subplot()
+    ax.scatter(array_all[:,1], array_all[:,2])
+    ax2 = fig.add_subplot()
+    ax2.scatter(array_all[:,1], E_blyp_pred)
+
+    plt.show()  
     
-    return new_results.reshape(len(new_results)//2, 2)
     
 def euc(i,j):
     return sum(
@@ -268,14 +273,11 @@ def time_euc():
     homo_list = db.get_homo_molecular_orbitals()
     lumo_list = db.get_lumo_molecular_orbitals()
 
+    i = np.array([1000, 1000, 1000])
+    j = np.array([2000, 2000, 2000])
     def run():
         ctr = 0
         for idx in range(0, len(all_), 2):
-            try:
-                j = np.array([idx+1, idx+1, idx+1])
-            except:
-                break
-            i = np.array([idx, idx, idx])
             euc(i, j)
             ctr+=1
         #print("counter = ", ctr)
@@ -288,6 +290,4 @@ if __name__ == "__main__":
     #show_results(r"results\2021-04-20\learning_21-47-05.npy")
     # time_chemical_distance_learning()
     # plot_testing_results(r"results\2021-04-20\learning_21-47-05.npy")
-    #time_euc()
-    new_results = re_arrange_learning_results(r"results\2021-04-20\learning_21-47-05.npy")
-    new_results
+    time_euc()
