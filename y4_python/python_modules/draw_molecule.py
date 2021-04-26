@@ -95,8 +95,8 @@ def draw_grid_images(array, distance_fun: Callable, outputFile: str, regression:
         x_mol_name, x_pm7, x_blyp, x_smiles, x_fp, x_homo, x_lumo = x
         y_mol_name, y_pm7, y_blyp, y_smiles, y_fp, y_homo, y_lumo = y
 
-        struct_distance = structural_distance(x_fp, y_fp)
-        RDF_distance = radial_distribution_difference(x_homo,y_homo)
+        # struct_distance = structural_distance(x_fp, y_fp)
+        # RDF_distance = radial_distribution_difference(x_homo,y_homo)
 
         mol_x = Chem.MolFromSmiles(x_smiles)
         mol_y = Chem.MolFromSmiles(y_smiles)
@@ -126,8 +126,6 @@ def draw_grid_images(array, distance_fun: Callable, outputFile: str, regression:
         mFont = ImageFont.truetype("arial", 28)
         myText = f"""
 D_Inertia = {distance:.4f} 
-Structural Distance = {struct_distance:.4f}
-D_RDF = {RDF_distance:.4f}
 Y_ij = {abs(dE_x - dE_y):.4f}"""
         w,h = draw.textsize(myText, mFont)
         draw.text(

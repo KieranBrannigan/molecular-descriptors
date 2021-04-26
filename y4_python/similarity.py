@@ -49,7 +49,7 @@ def sort_by_distance(distance_fun: Callable, descending=False, **kwargs):
     Defaults to Ascending, for descending pass descending=True.
     """
 
-    column_of_interest = funColumnMap[distance_fun]
+    coi = column_of_interest = funColumnMap[distance_fun]
 
     ## [(molName, Epm7, Eblyp, smiles, rdk_fingerprints, serialized_molecular_orbital), ...]
     all_ = db.get_all()
@@ -58,8 +58,8 @@ def sort_by_distance(distance_fun: Callable, descending=False, **kwargs):
 
     distances = []
     for x,y in pairs:
-        i = x[column_of_interest]
-        j = y[column_of_interest]
+        i = x[coi[0]:coi[1]]
+        j = y[coi[0]:coi[1]]
         distance = distance_fun(i,j,**kwargs)
         distances.append(
             (
@@ -73,14 +73,14 @@ def sort_by_distance(distance_fun: Callable, descending=False, **kwargs):
     
     return sortedDistances
 
-def get_most_least_similar(db: DB, k: int, distance_fun: Callable, **kwargs):
+def get_most_least_similar(db: DB, k: int, distance_fun: Callable, distance_fun_kwargs:dict):
     """
     For each pair of rows (molecules), get the k most and least distant rows based on supplied distance_fun
 
-    Returns most_similar, least_similar
+    Returns least_similar, most_similar
     """
 
-    column_of_interest = funColumnMap[distance_fun]
+    coi = column_of_interest = funColumnMap[distance_fun]
 
     ## [(molName, Epm7, Eblyp, smiles, rdk_fingerprints, serialized_molecular_orbital), ...]
     all_ = db.get_all()
@@ -89,8 +89,9 @@ def get_most_least_similar(db: DB, k: int, distance_fun: Callable, **kwargs):
     
     pairs_map = map(
         lambda pair: (distance_fun(
-            pair[0][column_of_interest]
-            , pair[1][column_of_interest]
+            *pair[0][coi[0]:coi[1]]
+            , *pair[1][coi[0]:coi[1]]
+            , **distance_fun_kwargs
         ),) + pair
         , pairs
     )
@@ -886,14 +887,14 @@ if __name__ == "__main__":
     #     , x_max=0.03
     # )
 
-    plot_metric_test_threshold(
-        r"results\11k_molecule_database_eV\structural_distance\structural_distance_radial_distribution_distance.npy"
-        , regression
-        , db
-        , 1.0
-        , x_max=None
-        , 
-    )
+    # plot_metric_test_threshold(
+    #     r"results\11k_molecule_database_eV\structural_distance\structural_distance_radial_distribution_distance.npy"
+    #     , regression
+    #     , db
+    #     , 1.0
+    #     , x_max=None
+    #     , 
+    # )
 
     # low_D_large_Y = get_small_D_large_Y_from_metric_results(
     #     r"results\2021-03-30\11k_molecule_database_eV\n_neigh=1\inertia_distance\inertia_distance.npy"
@@ -915,7 +916,9 @@ if __name__ == "__main__":
     #         )
     #     }
     # )
-    # draw_grid_images(low_D_large_Y, orbital_distance, os.path.join("results","LowDLargeY.png"), regression)
+    leastSimilar, mostSimilar = get_most_least_similar(db=db, k=6, distance_fun=structural_distance, distance_fun_kwargs={})
+    draw_grid_images(leastSimilar, orbital_distance, os.path.join("results","leastSimilar.png"), regression)
+    draw_grid_images(mostSimilar, orbital_distance, os.path.join("results","mostSimilar.png"), regression)
 
     from .python_modules.descriptors import num_of_atoms, num_of_phosphate_bonds, num_of_sulfate_bonds
 
