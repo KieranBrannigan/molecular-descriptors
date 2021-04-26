@@ -1,10 +1,11 @@
 from matplotlib import pyplot as plt
+from scipy.stats.stats import pearsonr
 from y4_python.python_modules.orbital_similarity import OrbitalDistanceKwargs, orbital_distance
 import numpy as np
 from timeit import timeit
 from itertools import combinations
 
-from sklearn import metrics
+from sklearn.metrics import mean_absolute_error
 
 from y4_python.similarity import plot_testing_metric_results, plot_metric_test_threshold
 from y4_python.python_modules.structural_similarity import structural_distance
@@ -45,14 +46,14 @@ def dE_from_row_idx(row_idx):
     return regression.distance_from_regress(i_pm7, i_blyp)
 
 def re_arrange_learning_results(results_file):
-    res = np.load(results_file) # [[y_real, y_pred], [...], ...]
+    res = np.load(results_file, allow_pickle=True) # [[y_real, y_pred], [...], ...]
     db = DB("y4_python/11k_molecule_database_eV.db")
     regression = MyRegression(db)
     m_r, c_r = regression.slope, regression.intercept
     all_ = db.get_all()
 
     def get_Eblyp(row_idx, dE_pred):
-        _, i_pm7, *_ = all_[row_idx]
+        _, i_pm7, *_ = all_[int(row_idx)]
         return (m_r*i_pm7 + c_r) - dE_pred
         
     res = res[np.argsort(res[:,0])]
@@ -64,11 +65,15 @@ def re_arrange_learning_results(results_file):
 
     array_all = np.array(all_)
     fig = plt.figure()
-    ax = fig.add_subplot()
-    ax.scatter(array_all[:,1], array_all[:,2])
-    ax2 = fig.add_subplot()
-    ax2.scatter(array_all[:,1], E_blyp_pred)
-
+    ax = fig.add_subplot(121)
+    ax.hist2d(array_all[:,1], array_all[:,2], bins=(200, 100), cmin=1)
+    ax.set_title("ax")
+    ax2 = fig.add_subplot(122)
+    ax2.hist2d(array_all[:,1], E_blyp_pred, bins=(200, 100), cmin=1)
+    ax2.set_title("ax2")
+    rmse = mean_absolute_error(array_all[:,2], E_blyp_pred)
+    pearsonr(array_all[:,2], E_blyp_pred)
+    print(rmse)
     plt.show()  
     
     
@@ -290,4 +295,4 @@ if __name__ == "__main__":
     #show_results(r"results\2021-04-20\learning_21-47-05.npy")
     # time_chemical_distance_learning()
     # plot_testing_results(r"results\2021-04-20\learning_21-47-05.npy")
-    time_euc()
+    re_arrange_learning_results(r"results\2021-04-23\learning_21-54-58.npy")
